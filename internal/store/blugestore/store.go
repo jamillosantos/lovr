@@ -36,7 +36,9 @@ func (s *Store) Add(_ context.Context, entry domain.LogEntry) error {
 	doc := bluge.NewDocument(id.String()).
 		AddField(bluge.NewTextField("$id", id.String())).
 		AddField(bluge.NewTextField("message", entry.Message)).
-		AddField(bluge.NewTextField("level", entry.Level.String()))
+		AddField(bluge.NewTextField("level", string(entry.Level))).
+		AddField(bluge.NewTextField("caller", entry.Caller)).
+		AddField(bluge.NewTextField("stacktrace", entry.Stacktrace))
 
 	for k, v := range entry.Fields {
 		var field bluge.Field

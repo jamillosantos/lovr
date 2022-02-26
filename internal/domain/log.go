@@ -11,6 +11,17 @@ const (
 	LevelPanic   Level = "panic"
 )
 
+var (
+	levelMap = map[Level]string{
+		LevelDebug:   "Debug",
+		LevelError:   "Error",
+		LevelInfo:    "Info",
+		LevelWarning: "Warning",
+		LevelFatal:   "Fatal",
+		LevelPanic:   "Panic",
+	}
+)
+
 func (l Level) String() string {
-	return string(l)
+	return levelMap[l]
 }

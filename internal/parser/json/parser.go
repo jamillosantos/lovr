@@ -47,9 +47,11 @@ func (p *JSONParser) mapToLogEntry(data map[string]interface{}) (domain.LogEntry
 		return domain.LogEntry{}, nil
 	}
 	var (
-		ts    time.Time
-		msg   string
-		level domain.Level
+		ts         time.Time
+		msg        string
+		level      domain.Level
+		caller     string
+		stacktrace string
 	)
 	if m, ok := m["ts"]; ok {
 		if s, ok := m.(float64); ok {
@@ -58,24 +60,39 @@ func (p *JSONParser) mapToLogEntry(data map[string]interface{}) (domain.LogEntry
 			ts = time.Unix(seconds, nseconds)
 		}
 	}
-	if m, ok := m["msg"]; ok {
-		if s, ok := m.(string); ok {
-			msg = s
-		}
+	if s, ok := p.getString(m, "msg"); ok {
+		msg = s
 	}
-	if m, ok := m["level"]; ok {
-		if s, ok := m.(string); ok {
-			level = domain.Level(s)
-		}
+	if s, ok := p.getString(m, "level"); ok {
+		level = domain.Level(s)
+	}
+	if s, ok := p.getString(m, "caller"); ok {
+		caller = s
+	}
+	if s, ok := p.getString(m, "stacktrace"); ok {
+		stacktrace = s
 	}
 	delete(m, "ts")
 	delete(m, "msg")
 	delete(m, "level")
+	delete(m, "caller")
+	delete(m, "stacktrace")
 	return domain.LogEntry{
-		Timestamp: ts,
-		Level:     level,
-		Message:   msg,
-		Fields:    m,
+		Timestamp:  ts,
+		Level:      level,
+		Message:    msg,
+		Fields:     m,
+		Caller:     caller,
+		Stacktrace: stacktrace,
 	}, nil
 
+}
+
+func (p *JSONParser) getString(m map[string]interface{}, s string) (string, bool) {
+	if m, ok := m[s]; ok {
+		if s, ok := m.(string); ok {
+			return s, true
+		}
+	}
+	return "", false
 }
