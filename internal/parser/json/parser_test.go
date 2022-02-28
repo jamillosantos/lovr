@@ -2,10 +2,9 @@ package json
 
 import (
 	"encoding/json"
-	"io"
-	"strings"
 	"testing"
 
+	"github.com/iancoleman/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -16,13 +15,14 @@ var (
 	wantEntry = domain.LogEntry{
 		Level:   domain.LevelError,
 		Message: "error message",
-		Fields: map[string]interface{}{
-			"field1": "value1",
-			"field2": float64(2),
+		Fields: []domain.LogField{
+			{"field1", "value1"},
+			{"field2", float64(2)},
 		},
 	}
 )
 
+/*
 func TestJSONParser_mapToLogEntry(t *testing.T) {
 	p := &JSONParser{}
 	givenMap := map[string]interface{}{
@@ -67,4 +67,45 @@ this is not a JSON`)
 
 	_, err = p.Next()
 	assert.ErrorIs(t, err, io.EOF)
+}
+*/
+
+func Test_flatten(t *testing.T) {
+	jsonBytes := []byte(`{
+	"a": {
+		"b": "value a.b",
+		"c": 1
+	},
+	"b": "value b",
+	"c": {
+		"a": "value c.a",
+		"b": "value c.b"
+	}
+}`)
+	o := orderedmap.New()
+	dst := orderedmap.New()
+	err := json.Unmarshal(jsonBytes, o)
+	require.NoError(t, err)
+
+	flatten("", o, dst)
+
+	v, ok := dst.Get("a.b")
+	require.True(t, ok)
+	assert.Equal(t, v, "value a.b")
+
+	v, ok = dst.Get("a.c")
+	require.True(t, ok)
+	assert.Equal(t, v, float64(1))
+
+	v, ok = dst.Get("b")
+	require.True(t, ok)
+	assert.Equal(t, v, "value b")
+
+	v, ok = dst.Get("c.a")
+	require.True(t, ok)
+	assert.Equal(t, v, "value c.a")
+
+	v, ok = dst.Get("c.b")
+	require.True(t, ok)
+	assert.Equal(t, v, "value c.b")
 }

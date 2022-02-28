@@ -14,7 +14,6 @@ import (
 	"github.com/jamillosantos/logviewer/internal/parser/json"
 	"github.com/jamillosantos/logviewer/internal/service"
 	"github.com/jamillosantos/logviewer/internal/service/processors"
-	"github.com/jamillosantos/logviewer/internal/store/blugestore"
 )
 
 var source = "-"
@@ -41,8 +40,6 @@ to quickly create a Cobra application.`,
 			_ = blugeWriter.Close()
 		}()
 
-		store := blugestore.New(blugeWriter)
-
 		sourceReader, releaseSource, err := service.GetSource(source)
 		if err != nil {
 			reportFatalError(fmt.Errorf("could not initialize source: %w", err))
@@ -57,12 +54,13 @@ to quickly create a Cobra application.`,
 			reportFatalError(err)
 		}
 
-		entryAdder := processors.NewEntryAdder(store)
+		processorsList := make([]service.EntryProcessor, 0)
+		processorsList = append(processorsList, processors.NewStdout())
+		// processorsList = append(processorsList, processors.NewBluger(blugeWriter))
 
-		stdoutputter := processors.NewStdout()
 		entriesFetcher := service.NewEntriesReader(parser)
 		func() { // This should be a go routine.
-			err := entriesFetcher.Start(ctx, entryAdder, stdoutputter)
+			err := entriesFetcher.Start(ctx, processorsList...)
 			switch {
 			case errors.Is(err, context.Canceled):
 				return

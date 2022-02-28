@@ -1,4 +1,4 @@
-package blugestore
+package processors
 
 import (
 	"context"
@@ -17,17 +17,17 @@ type BlugeWriter interface {
 	Update(id segment.Term, doc segment.Document) error
 }
 
-type Store struct {
+type Bluger struct {
 	writer BlugeWriter
 }
 
-func New(writer BlugeWriter) *Store {
-	return &Store{
+func NewBluger(writer BlugeWriter) *Bluger {
+	return &Bluger{
 		writer: writer,
 	}
 }
 
-func (s *Store) Add(_ context.Context, entry domain.LogEntry) error {
+func (s *Bluger) Process(_ context.Context, entry domain.LogEntry) error {
 	id, err := ulid.New()
 	if err != nil {
 		return fmt.Errorf("failed creating the entry ID: %w", err)
@@ -40,8 +40,10 @@ func (s *Store) Add(_ context.Context, entry domain.LogEntry) error {
 		AddField(bluge.NewTextField("caller", entry.Caller)).
 		AddField(bluge.NewTextField("stacktrace", entry.Stacktrace))
 
-	for k, v := range entry.Fields {
+	for _, f := range entry.Fields {
 		var field bluge.Field
+
+		k, v := f.Key, f.Value
 
 		switch vv := v.(type) {
 		case string:

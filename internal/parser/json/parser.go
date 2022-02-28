@@ -6,7 +6,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/jeremywohl/flatten/v2"
+	"github.com/iancoleman/orderedmap"
 
 	"github.com/jamillosantos/logviewer/internal/domain"
 	"github.com/jamillosantos/logviewer/internal/parser"
@@ -33,19 +33,19 @@ func (p *JSONParser) Next() (domain.LogEntry, error) {
 		return domain.LogEntry{}, io.EOF
 	}
 	jsonBytes := p.s.Bytes()
-	data := make(map[string]interface{})
+	var data orderedmap.OrderedMap
 	err := json.Unmarshal(jsonBytes, &data)
 	if err != nil {
 		return domain.LogEntry{}, err
 	}
-	return p.mapToLogEntry(data)
+	return p.mapToLogEntry(&data)
 }
 
-func (p *JSONParser) mapToLogEntry(data map[string]interface{}) (domain.LogEntry, error) {
-	m, err := flatten.Flatten(data, "", flatten.DotStyle)
-	if err != nil {
-		return domain.LogEntry{}, nil
-	}
+func (p *JSONParser) mapToLogEntry(inputData *orderedmap.OrderedMap) (domain.LogEntry, error) {
+	data := orderedmap.New()
+
+	flatten("", inputData, data)
+
 	var (
 		ts         time.Time
 		msg        string
@@ -53,43 +53,72 @@ func (p *JSONParser) mapToLogEntry(data map[string]interface{}) (domain.LogEntry
 		caller     string
 		stacktrace string
 	)
-	if m, ok := m["ts"]; ok {
+	if m, ok := data.Get("ts"); ok {
 		if s, ok := m.(float64); ok {
 			seconds := int64(s) // throw away the
 			nseconds := int64((s - float64(seconds)) * float64(time.Second))
 			ts = time.Unix(seconds, nseconds)
 		}
 	}
-	if s, ok := p.getString(m, "msg"); ok {
+	if s, ok := p.getString(data, "msg"); ok {
 		msg = s
 	}
-	if s, ok := p.getString(m, "level"); ok {
+	if s, ok := p.getString(data, "level"); ok {
 		level = domain.Level(s)
 	}
-	if s, ok := p.getString(m, "caller"); ok {
+	if s, ok := p.getString(data, "caller"); ok {
 		caller = s
 	}
-	if s, ok := p.getString(m, "stacktrace"); ok {
+	if s, ok := p.getString(data, "stacktrace"); ok {
 		stacktrace = s
 	}
-	delete(m, "ts")
-	delete(m, "msg")
-	delete(m, "level")
-	delete(m, "caller")
-	delete(m, "stacktrace")
+	data.Delete("ts")
+	data.Delete("msg")
+	data.Delete("level")
+	data.Delete("caller")
+	data.Delete("stacktrace")
+
+	keys := data.Keys()
+	f := make([]domain.LogField, 0, len(keys))
+	for _, k := range keys {
+		v, _ := data.Get(k)
+		f = append(f, domain.LogField{
+			Key:   k,
+			Value: v,
+		})
+	}
+
 	return domain.LogEntry{
 		Timestamp:  ts,
 		Level:      level,
 		Message:    msg,
-		Fields:     m,
+		Fields:     f,
 		Caller:     caller,
 		Stacktrace: stacktrace,
 	}, nil
 
 }
 
-func (p *JSONParser) getString(m map[string]interface{}, s string) (string, bool) {
-	if m, ok := m[s]; ok {
+func flatten(prefix string, data, dest *orderedmap.OrderedMap) {
+	keys := data.Keys()
+	for _, k := range keys {
+		v, ok := data.Get(k)
+		if !ok {
+			continue
+		}
+		switch vv := v.(type) {
+		case orderedmap.OrderedMap:
+			flatten(prefix+k+".", &vv, dest)
+		case *orderedmap.OrderedMap:
+			flatten(prefix+k+".", vv, dest)
+		default:
+			dest.Set(prefix+k, vv)
+		}
+	}
+}
+
+func (p *JSONParser) getString(m *orderedmap.OrderedMap, s string) (string, bool) {
+	if m, ok := m.Get(s); ok {
 		if s, ok := m.(string); ok {
 			return s, true
 		}
