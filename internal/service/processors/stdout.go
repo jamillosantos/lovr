@@ -98,7 +98,12 @@ func (s *Stdout) printTable(prefix string, table []domain.LogField, o ...formatO
 			s.printTable("    "+prefix, vv, o...)
 			continue
 		}
-		fmt.Printf("%s%s: %s\n", prefix, opts.LabelDecorator("%"+string(opts.labelAlignment)+strconv.Itoa(opts.ColumnWidth)+"s", f.Key), f.Value)
+		d := fmt.Sprintf
+		if f.Key == "error" {
+			d = levelMapping[domain.LevelError]
+		}
+		fmt.Print(d("%s%s", prefix, opts.LabelDecorator("%"+string(opts.labelAlignment)+strconv.Itoa(opts.ColumnWidth)+"s", f.Key)))
+		fmt.Printf(": %s\n", f.Value)
 	}
 	return
 }
