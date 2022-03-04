@@ -3,6 +3,8 @@ package json
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"time"
 
@@ -12,9 +14,13 @@ import (
 	"github.com/jamillosantos/logviewer/internal/parser"
 )
 
+var ErrInvalidJson = errors.New("invalid error")
+
 type JSONParser struct {
 	s *bufio.Scanner
 	r io.Reader
+
+	currentLine int
 }
 
 const maxBufferSize = 32 * 1024
@@ -29,19 +35,20 @@ func NewJSONParser(r io.Reader) (parser.Parser, error) {
 }
 
 func (p *JSONParser) Next() (domain.LogEntry, error) {
+	p.currentLine++
 	if !p.s.Scan() {
 		return domain.LogEntry{}, io.EOF
 	}
 	jsonBytes := p.s.Bytes()
+
 	var data orderedmap.OrderedMap
-	err := json.Unmarshal(jsonBytes, &data)
-	if err != nil {
-		return domain.LogEntry{}, err
+	if err := json.Unmarshal(jsonBytes, &data); err != nil {
+		return domain.LogEntry{}, fmt.Errorf("%w: line %d", ErrInvalidJson, p.currentLine)
 	}
-	return p.mapToLogEntry(&data)
+	return p.mapToLogEntry(&data), nil
 }
 
-func (p *JSONParser) mapToLogEntry(inputData *orderedmap.OrderedMap) (domain.LogEntry, error) {
+func (p *JSONParser) mapToLogEntry(inputData *orderedmap.OrderedMap) domain.LogEntry {
 	data := orderedmap.New()
 
 	flatten("", inputData, data)
@@ -95,7 +102,7 @@ func (p *JSONParser) mapToLogEntry(inputData *orderedmap.OrderedMap) (domain.Log
 		Fields:     f,
 		Caller:     caller,
 		Stacktrace: stacktrace,
-	}, nil
+	}
 
 }
 

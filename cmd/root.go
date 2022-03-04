@@ -4,19 +4,27 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/signal"
+	"sync"
 
 	"github.com/blugelabs/bluge"
 	"github.com/spf13/cobra"
 
 	"github.com/jamillosantos/logviewer/internal/parser/json"
 	"github.com/jamillosantos/logviewer/internal/service"
+	"github.com/jamillosantos/logviewer/internal/service/api"
+	"github.com/jamillosantos/logviewer/internal/service/entryreader"
 	"github.com/jamillosantos/logviewer/internal/service/processors"
 )
 
-var source = "-"
+var (
+	source   = "-"
+	web      = true
+	bindAddr = "127.0.0.1:8080"
+)
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -31,10 +39,11 @@ to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := context.Background()
 
-		config := bluge.InMemoryOnlyConfig()
-		blugeWriter, err := bluge.OpenWriter(config)
+		blugeConfig := bluge.InMemoryOnlyConfig()
+
+		blugeWriter, err := bluge.OpenWriter(blugeConfig)
 		if err != nil {
-			log.Fatalf("error opening bluge writer: %v", err)
+			log.Fatalf("error opening bluge writer: %w", err)
 		}
 		defer func() {
 			_ = blugeWriter.Close()
@@ -56,19 +65,38 @@ to quickly create a Cobra application.`,
 
 		processorsList := make([]service.EntryProcessor, 0)
 		processorsList = append(processorsList, processors.NewStdout())
-		// processorsList = append(processorsList, processors.NewBluger(blugeWriter))
+		processorsList = append(processorsList, processors.NewBluger(blugeWriter))
+
+		var wc sync.WaitGroup
 
 		entriesFetcher := service.NewEntriesReader(parser)
-		func() { // This should be a go routine.
-			err := entriesFetcher.Start(ctx, processorsList...)
-			switch {
-			case errors.Is(err, context.Canceled):
-				return
-			case err != nil:
-				reportFatalError(err)
-			}
-		}()
+		go runFetcher(ctx, &wc, entriesFetcher, processorsList)
+
+		entryReader := entryreader.NewReader(blugeWriter)
+
+		serviceAPI := api.New(entryReader, api.WithBindAddr("127.0.0.1:8080"), api.WithWC(&wc))
+		if err := serviceAPI.Start(ctx); err != nil {
+			reportFatalError(err)
+		}
+
+		cancelFunc() // Close all goroutines
+		wc.Wait()
 	},
+}
+
+func runFetcher(ctx context.Context, wc *sync.WaitGroup, entriesFetcher *service.EntriesReader, processorsList []service.EntryProcessor) {
+	defer wc.Done()
+	wc.Add(1)
+	err := entriesFetcher.Start(ctx, processorsList...)
+	switch {
+	case errors.Is(err, context.Canceled):
+		return
+	case errors.Is(err, io.EOF):
+		fmt.Println("EOF")
+		return
+	case err != nil:
+		reportFatalError(err)
+	}
 }
 
 func reportFatalError(err error) {

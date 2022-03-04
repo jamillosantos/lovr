@@ -7,10 +7,20 @@ import (
 	"strconv"
 
 	"github.com/blugelabs/bluge"
+	"github.com/blugelabs/bluge/index"
 	segment "github.com/blugelabs/bluge_segment_api"
 
 	"github.com/jamillosantos/logviewer/internal/domain"
 	"github.com/jamillosantos/logviewer/internal/ulid"
+)
+
+const (
+	FieldID         = "_id"
+	FieldTimestamp  = "timestamp"
+	FieldMessage    = "message"
+	FieldLevel      = "level"
+	FieldCaller     = "caller"
+	FieldStacktrace = "stacktrace"
 )
 
 type BlugeWriter interface {
@@ -18,10 +28,10 @@ type BlugeWriter interface {
 }
 
 type Bluger struct {
-	writer BlugeWriter
+	writer *bluge.Writer
 }
 
-func NewBluger(writer BlugeWriter) *Bluger {
+func NewBluger(writer *bluge.Writer) *Bluger {
 	return &Bluger{
 		writer: writer,
 	}
@@ -33,12 +43,26 @@ func (s *Bluger) Process(_ context.Context, entry domain.LogEntry) error {
 		return fmt.Errorf("failed creating the entry ID: %w", err)
 	}
 
+	fID := bluge.NewTextField(FieldID, id.String())
+	fID.FieldOptions = fieldOptions()
+	fTimestamp := bluge.NewDateTimeField(FieldTimestamp, entry.Timestamp.UTC())
+	fTimestamp.FieldOptions = fieldOptions()
+	fMessage := bluge.NewTextField(FieldMessage, entry.Message)
+	fMessage.FieldOptions = fieldOptions()
+	fLevel := bluge.NewTextField(FieldLevel, string(entry.Level))
+	fLevel.FieldOptions = fieldOptions()
+	fCaller := bluge.NewTextField(FieldCaller, entry.Caller)
+	fCaller.FieldOptions = fieldOptions()
+	fStacktrace := bluge.NewTextField(FieldStacktrace, entry.Stacktrace)
+	fStacktrace.FieldOptions = fieldOptions()
+
 	doc := bluge.NewDocument(id.String()).
-		AddField(bluge.NewTextField("$id", id.String())).
-		AddField(bluge.NewTextField("message", entry.Message)).
-		AddField(bluge.NewTextField("level", string(entry.Level))).
-		AddField(bluge.NewTextField("caller", entry.Caller)).
-		AddField(bluge.NewTextField("stacktrace", entry.Stacktrace))
+		AddField(fID).
+		AddField(fTimestamp).
+		AddField(fMessage).
+		AddField(fLevel).
+		AddField(fCaller).
+		AddField(fStacktrace)
 
 	for _, f := range entry.Fields {
 		var field bluge.Field
@@ -47,21 +71,37 @@ func (s *Bluger) Process(_ context.Context, entry domain.LogEntry) error {
 
 		switch vv := v.(type) {
 		case string:
-			field = bluge.NewTextField(k, vv)
+			ff := bluge.NewTextField(k, vv)
+			ff.FieldOptions = fieldOptions()
+			field = ff
 		case int:
-			field = bluge.NewNumericField(k, float64(vv))
+			ff := bluge.NewNumericField(k, float64(vv))
+			ff.FieldOptions = fieldOptions()
+			field = ff
 		case int64:
-			field = bluge.NewNumericField(k, float64(vv))
+			ff := bluge.NewNumericField(k, float64(vv))
+			ff.FieldOptions = fieldOptions()
+			field = ff
 		case float64:
-			field = bluge.NewNumericField(k, vv)
+			ff := bluge.NewNumericField(k, vv)
+			ff.FieldOptions = fieldOptions()
+			field = ff
 		case bool:
-			field = bluge.NewTextField(k, strconv.FormatBool(vv))
+			ff := bluge.NewTextField(k, strconv.FormatBool(vv))
+			ff.FieldOptions = fieldOptions()
+			field = ff
 		default:
 			return fmt.Errorf("field type not supported: %s", reflect.TypeOf(v).Name())
 		}
 
-		doc = doc.AddField(field)
+		doc.AddField(field)
 	}
 
-	return s.writer.Update(doc.ID(), doc)
+	b := index.NewBatch()
+	b.Insert(doc)
+	return s.writer.Batch(b)
+}
+
+func fieldOptions() bluge.FieldOptions {
+	return bluge.Store | bluge.Aggregatable | bluge.Index | bluge.Sortable
 }

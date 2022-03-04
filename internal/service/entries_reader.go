@@ -2,8 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
-	"io"
 
 	"github.com/jamillosantos/logviewer/internal/domain"
 )
@@ -29,11 +27,7 @@ func NewEntriesReader(fetcher EntryFetcher) *EntriesReader {
 func (r *EntriesReader) Start(ctx context.Context, entryProcessors ...EntryProcessor) error {
 	for {
 		entry, err := r.fetcher.Next()
-		switch {
-		case errors.Is(err, io.EOF):
-			// End of source
-			return nil
-		case err != nil:
+		if err != nil {
 			return err
 		}
 
