@@ -13,7 +13,6 @@ import (
 	"github.com/blugelabs/bluge"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 
 	"github.com/jamillosantos/logviewer/internal/logctx"
 	"github.com/jamillosantos/logviewer/internal/parser/json"
@@ -40,8 +39,6 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		initLogger()
-
 		ctx := context.Background()
 
 		blugeConfig := bluge.InMemoryOnlyConfig()
@@ -76,7 +73,10 @@ to quickly create a Cobra application.`,
 
 		var wc sync.WaitGroup
 
-		entriesFetcher := service.NewEntriesReader(parser)
+		entriesFetcher := service.NewEntriesReader(parser, func(ctx context.Context, err error) error {
+			logctx.Error(ctx, "error reading entries", zap.Error(err))
+			return nil // Informs the service that the error can be ignored and the process can continue.
+		})
 		go runFetcher(ctx, &wc, entriesFetcher, processorsList)
 
 		entryReader := entryreader.NewReader(blugeWriter, blugerProcessor)
@@ -89,14 +89,6 @@ to quickly create a Cobra application.`,
 		cancelFunc() // Close all goroutines
 		wc.Wait()
 	},
-}
-
-func initLogger() {
-	l, err := zap.NewDevelopment(zap.ErrorOutput(zapcore.Lock(os.Stderr)))
-	if err != nil {
-		panic(err)
-	}
-	logctx.InitLogger(l)
 }
 
 func runFetcher(ctx context.Context, wc *sync.WaitGroup, entriesFetcher *service.EntriesReader, processorsList []service.EntryProcessor) {

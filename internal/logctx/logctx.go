@@ -19,7 +19,10 @@ var (
 )
 
 func init() {
-	l, err := zap.NewDevelopment(zap.ErrorOutput(zapcore.Lock(os.Stderr)))
+	cfg := zap.NewDevelopmentConfig()
+	cfg.DisableStacktrace = true
+	cfg.Encoding = "console"
+	l, err := cfg.Build(zap.ErrorOutput(zapcore.Lock(os.Stderr)))
 	if err != nil {
 		panic(err)
 	}

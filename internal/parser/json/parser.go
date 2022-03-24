@@ -14,7 +14,7 @@ import (
 	"github.com/jamillosantos/logviewer/internal/parser"
 )
 
-var ErrInvalidJson = errors.New("invalid error")
+var ErrInvalidEntryFormat = errors.New("invalid error")
 
 type JSONParser struct {
 	s *bufio.Scanner
@@ -43,7 +43,7 @@ func (p *JSONParser) Next() (domain.LogEntry, error) {
 
 	var data orderedmap.OrderedMap
 	if err := json.Unmarshal(jsonBytes, &data); err != nil {
-		return domain.LogEntry{}, fmt.Errorf("%w: line %d", ErrInvalidJson, p.currentLine)
+		return domain.LogEntry{}, fmt.Errorf("%w: invalid JSON at line %d: %s", ErrInvalidEntryFormat, p.currentLine, err.Error())
 	}
 	return p.mapToLogEntry(&data), nil
 }
