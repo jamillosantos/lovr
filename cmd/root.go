@@ -12,12 +12,15 @@ import (
 
 	"github.com/blugelabs/bluge"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 
+	"github.com/jamillosantos/logviewer/internal/logctx"
 	"github.com/jamillosantos/logviewer/internal/parser/json"
 	"github.com/jamillosantos/logviewer/internal/service"
-	"github.com/jamillosantos/logviewer/internal/service/api"
 	"github.com/jamillosantos/logviewer/internal/service/entryreader"
 	"github.com/jamillosantos/logviewer/internal/service/processors"
+	"github.com/jamillosantos/logviewer/internal/transport/http"
 )
 
 var (
@@ -37,6 +40,8 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		initLogger()
+
 		ctx := context.Background()
 
 		blugeConfig := bluge.InMemoryOnlyConfig()
@@ -63,18 +68,20 @@ to quickly create a Cobra application.`,
 			reportFatalError(err)
 		}
 
+		blugerProcessor := processors.NewBluger(blugeWriter)
+
 		processorsList := make([]service.EntryProcessor, 0)
 		processorsList = append(processorsList, processors.NewStdout())
-		processorsList = append(processorsList, processors.NewBluger(blugeWriter))
+		processorsList = append(processorsList, blugerProcessor)
 
 		var wc sync.WaitGroup
 
 		entriesFetcher := service.NewEntriesReader(parser)
 		go runFetcher(ctx, &wc, entriesFetcher, processorsList)
 
-		entryReader := entryreader.NewReader(blugeWriter)
+		entryReader := entryreader.NewReader(blugeWriter, blugerProcessor)
 
-		serviceAPI := api.New(entryReader, api.WithBindAddr("127.0.0.1:8080"), api.WithWC(&wc))
+		serviceAPI := http.New(entryReader, http.WithBindAddr("127.0.0.1:8080"), http.WithWC(&wc))
 		if err := serviceAPI.Start(ctx); err != nil {
 			reportFatalError(err)
 		}
@@ -82,6 +89,14 @@ to quickly create a Cobra application.`,
 		cancelFunc() // Close all goroutines
 		wc.Wait()
 	},
+}
+
+func initLogger() {
+	l, err := zap.NewDevelopment(zap.ErrorOutput(zapcore.Lock(os.Stderr)))
+	if err != nil {
+		panic(err)
+	}
+	logctx.InitLogger(l)
 }
 
 func runFetcher(ctx context.Context, wc *sync.WaitGroup, entriesFetcher *service.EntriesReader, processorsList []service.EntryProcessor) {

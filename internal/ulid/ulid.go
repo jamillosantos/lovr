@@ -15,8 +15,7 @@ var pool = sync.Pool{
 	},
 }
 
-func New() (ulid.ULID, error) {
-	t := time.Now().UTC()
+func New(t time.Time) (ulid.ULID, error) {
 	entropy := pool.Get().(io.Reader)
 	u, err := ulid.New(ulid.Timestamp(t), entropy)
 	pool.Put(entropy)

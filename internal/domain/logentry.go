@@ -8,6 +8,7 @@ type LogField struct {
 }
 
 type LogEntry struct {
+	ID         string
 	Timestamp  time.Time
 	Level      Level
 	Message    string

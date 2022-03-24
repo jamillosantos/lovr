@@ -120,7 +120,7 @@ func (s *Stdout) prepareFields(inputFields []domain.LogField) []domain.LogField 
 	fields := make([]domain.LogField, 0)
 	for _, f := range inputFields {
 		k, v := f.Key, f.Value
-		fields = append(inputFields, domain.LogField{
+		fields = append(fields, domain.LogField{
 			Key:   k,
 			Value: fmt.Sprint(v),
 		})

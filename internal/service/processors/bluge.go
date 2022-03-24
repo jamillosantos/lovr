@@ -9,6 +9,7 @@ import (
 	"github.com/blugelabs/bluge"
 	"github.com/blugelabs/bluge/index"
 	segment "github.com/blugelabs/bluge_segment_api"
+	"go.uber.org/atomic"
 
 	"github.com/jamillosantos/logviewer/internal/domain"
 	"github.com/jamillosantos/logviewer/internal/ulid"
@@ -28,7 +29,8 @@ type BlugeWriter interface {
 }
 
 type Bluger struct {
-	writer *bluge.Writer
+	writer       *bluge.Writer
+	entriesCount atomic.Int64
 }
 
 func NewBluger(writer *bluge.Writer) *Bluger {
@@ -38,7 +40,7 @@ func NewBluger(writer *bluge.Writer) *Bluger {
 }
 
 func (s *Bluger) Process(_ context.Context, entry domain.LogEntry) error {
-	id, err := ulid.New()
+	id, err := ulid.New(entry.Timestamp)
 	if err != nil {
 		return fmt.Errorf("failed creating the entry ID: %w", err)
 	}
@@ -99,7 +101,16 @@ func (s *Bluger) Process(_ context.Context, entry domain.LogEntry) error {
 
 	b := index.NewBatch()
 	b.Insert(doc)
-	return s.writer.Batch(b)
+	err = s.writer.Batch(b)
+	if err != nil {
+		return err
+	}
+	s.entriesCount.Inc()
+	return nil
+}
+
+func (s *Bluger) EntriesCount() int64 {
+	return s.entriesCount.Load()
 }
 
 func fieldOptions() bluge.FieldOptions {
