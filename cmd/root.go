@@ -25,14 +25,24 @@ var (
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "logviewer",
-	Short: "Logviewer",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
+	Use:   "lovr",
+	Short: "LOgVieweR is a tool that enable you to view your logs in a human readable way",
+	Long: `LOgVieweR is a tool that enable you to view your logs in a human readable way.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+Examples:
+
+  Reading from stdin:
+  $ yourapplication | lovr
+
+  Reading from a file:
+  $ lovr -s /path/to/file.log
+
+  Listening changes form a file:
+  $ tail -f /path/to/file.log | lovr
+
+  Reading from a docker-compose container:
+  $ docker-compose logs -f --no-log-prefix api | lovr
+`,
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := context.Background()
 
@@ -75,7 +85,11 @@ func Execute() {
 
 func init() {
 	rootCmd.PersistentFlags().BoolVar(&showParseErrorsArg, "show-parse-errors", showParseErrorsArg, "Output parse errors to the STDERR")
-	rootCmd.PersistentFlags().StringVarP(&filtersArg, "filters", "i", filtersArg, "Comma separated list of filters to transform the source stream (docker). Default: none")
-	rootCmd.PersistentFlags().StringVarP(&parserArg, "parser", "p", parserArg, "Parser used to read the log (Only `json` supported for now). Default: json.")
-	rootCmd.PersistentFlags().StringVarP(&sourceArg, "source", "s", sourceArg, "Filename of the log information. Default '-' (stdin).")
+	rootCmd.PersistentFlags().StringVarP(&sourceArg, "source", "s", sourceArg, "Filename of the log information (use `-` for STDIN).")
+
+	// No filters are available yet
+	// rootCmd.PersistentFlags().StringVarP(&filtersArg, "filters", "i", filtersArg, "Comma separated list of filters to transform the source stream (docker).")
+
+	// Only JSON is available now, so it does not make sense let the possibility of configuring it.
+	// rootCmd.PersistentFlags().StringVarP(&parserArg, "parser", "p", parserArg, "Parser used to read the log.")
 }
