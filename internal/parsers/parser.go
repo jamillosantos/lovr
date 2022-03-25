@@ -1,4 +1,4 @@
-package parser
+package parsers
 
 import (
 	"github.com/jamillosantos/logviewer/internal/domain"

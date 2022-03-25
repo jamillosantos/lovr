@@ -2,30 +2,25 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"io"
-	"log"
 	"os"
 	"os/signal"
-	"sync"
+	"strings"
 
-	"github.com/blugelabs/bluge"
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 
-	"github.com/jamillosantos/logviewer/internal/logctx"
-	"github.com/jamillosantos/logviewer/internal/parser/json"
+	"github.com/jamillosantos/logviewer/internal/filters"
+	"github.com/jamillosantos/logviewer/internal/parsers"
+	_ "github.com/jamillosantos/logviewer/internal/parsers/json"
 	"github.com/jamillosantos/logviewer/internal/service"
-	"github.com/jamillosantos/logviewer/internal/service/entryreader"
 	"github.com/jamillosantos/logviewer/internal/service/processors"
-	"github.com/jamillosantos/logviewer/internal/transport/http"
 )
 
 var (
-	source   = "-"
-	web      = true
-	bindAddr = "127.0.0.1:8080"
+	parserArg          = "json"
+	filtersArg         = "none"
+	sourceArg          = "-"
+	showParseErrorsArg = false
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -41,17 +36,7 @@ to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := context.Background()
 
-		blugeConfig := bluge.InMemoryOnlyConfig()
-
-		blugeWriter, err := bluge.OpenWriter(blugeConfig)
-		if err != nil {
-			log.Fatalf("error opening bluge writer: %w", err)
-		}
-		defer func() {
-			_ = blugeWriter.Close()
-		}()
-
-		sourceReader, releaseSource, err := service.GetSource(source)
+		sourceReader, releaseSource, err := service.GetSource(sourceArg)
 		if err != nil {
 			reportFatalError(fmt.Errorf("could not initialize source: %w", err))
 		}
@@ -60,59 +45,23 @@ to quickly create a Cobra application.`,
 		ctx, cancelFunc := signal.NotifyContext(ctx, os.Interrupt)
 		defer cancelFunc()
 
-		parser, err := json.NewJSONParser(sourceReader)
+		if filtersArg != "none" {
+			for _, f := range strings.Split(filtersArg, ",") {
+				sourceReader = filters.New(f, sourceReader)
+			}
+		}
+
+		parser, err := parsers.New(parserArg, sourceReader)
 		if err != nil {
 			reportFatalError(err)
 		}
 
-		blugerProcessor := processors.NewBluger(blugeWriter)
-
 		processorsList := make([]service.EntryProcessor, 0)
 		processorsList = append(processorsList, processors.NewStdout())
-		processorsList = append(processorsList, blugerProcessor)
 
-		var wc sync.WaitGroup
-
-		entriesFetcher := service.NewEntriesReader(parser, func(ctx context.Context, err error) error {
-			logctx.Error(ctx, "error reading entries", zap.Error(err))
-			return nil // Informs the service that the error can be ignored and the process can continue.
-		})
-		go runFetcher(ctx, &wc, entriesFetcher, processorsList)
-
-		entryReader := entryreader.NewReader(blugeWriter, blugerProcessor)
-
-		serviceAPI := http.New(entryReader, http.WithBindAddr("127.0.0.1:8080"), http.WithWC(&wc))
-		if err := serviceAPI.Start(ctx); err != nil {
-			reportFatalError(err)
-		}
-
-		cancelFunc() // Close all goroutines
-		wc.Wait()
+		entriesFetcher := service.NewEntriesReader(parser, logHandler)
+		runFetcher(ctx, entriesFetcher, processorsList)
 	},
-}
-
-func runFetcher(ctx context.Context, wc *sync.WaitGroup, entriesFetcher *service.EntriesReader, processorsList []service.EntryProcessor) {
-	defer wc.Done()
-	wc.Add(1)
-	err := entriesFetcher.Start(ctx, processorsList...)
-	switch {
-	case errors.Is(err, context.Canceled):
-		return
-	case errors.Is(err, io.EOF):
-		fmt.Println("EOF")
-		return
-	case err != nil:
-		reportFatalError(err)
-	}
-}
-
-func reportFatalError(err error) {
-	fmt.Println("### ERROR:", err.Error())
-	os.Exit(1)
-}
-
-func reportError(err error) {
-	fmt.Println("### ERROR:", err.Error())
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -125,7 +74,8 @@ func Execute() {
 }
 
 func init() {
-	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.logviewer.yaml)")
-
-	rootCmd.Flags().StringVarP(&source, "source", "s", source, "Filename of the log information. Default '-' (stdin).")
+	rootCmd.PersistentFlags().BoolVar(&showParseErrorsArg, "show-parse-errors", showParseErrorsArg, "Output parse errors to the STDERR")
+	rootCmd.PersistentFlags().StringVarP(&filtersArg, "filters", "i", filtersArg, "Comma separated list of filters to transform the source stream (docker). Default: none")
+	rootCmd.PersistentFlags().StringVarP(&parserArg, "parser", "p", parserArg, "Parser used to read the log (Only `json` supported for now). Default: json.")
+	rootCmd.PersistentFlags().StringVarP(&sourceArg, "source", "s", sourceArg, "Filename of the log information. Default '-' (stdin).")
 }

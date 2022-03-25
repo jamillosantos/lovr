@@ -11,7 +11,7 @@ import (
 	"github.com/iancoleman/orderedmap"
 
 	"github.com/jamillosantos/logviewer/internal/domain"
-	"github.com/jamillosantos/logviewer/internal/parser"
+	"github.com/jamillosantos/logviewer/internal/parsers"
 )
 
 var ErrInvalidEntryFormat = errors.New("invalid error")
@@ -25,7 +25,11 @@ type JSONParser struct {
 
 const maxBufferSize = 32 * 1024
 
-func NewJSONParser(r io.Reader) (parser.Parser, error) {
+func init() {
+	parsers.Register("json", NewJSONParser)
+}
+
+func NewJSONParser(r io.Reader) (parsers.Parser, error) {
 	s := bufio.NewScanner(r)
 	s.Buffer(make([]byte, maxBufferSize), maxBufferSize) // 32k
 	return &JSONParser{
