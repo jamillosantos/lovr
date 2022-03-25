@@ -64,12 +64,8 @@ func (p *JSONParser) mapToLogEntry(inputData *orderedmap.OrderedMap) domain.LogE
 		caller     string
 		stacktrace string
 	)
-	if m, ok := data.Get("ts"); ok {
-		if s, ok := m.(float64); ok {
-			seconds := int64(s) // throw away the
-			nseconds := int64((s - float64(seconds)) * float64(time.Second))
-			ts = time.Unix(seconds, nseconds)
-		}
+	if m, ok := getTS(data); ok {
+		ts = parseTS(m)
 	}
 	if s, ok := p.getString(data, "msg"); ok {
 		msg = s
@@ -108,6 +104,43 @@ func (p *JSONParser) mapToLogEntry(inputData *orderedmap.OrderedMap) domain.LogE
 		Stacktrace: stacktrace,
 	}
 
+}
+
+func parseTS(m interface{}) time.Time {
+	switch m := m.(type) {
+	case string:
+		return parseTSString(m)
+	case float64:
+		seconds := int64(m) // throw away the
+		nseconds := int64((m - float64(seconds)) * float64(time.Second))
+		return time.Unix(seconds, nseconds)
+	default:
+		return time.Time{}
+	}
+}
+
+var tsFormats = []string{time.Layout, time.ANSIC, time.UnixDate, time.RubyDate, time.RFC822, time.RFC822Z, time.RFC850,
+	time.RFC1123, time.RFC1123Z, time.RFC3339, time.RFC3339Nano, time.Stamp, time.StampMilli, time.StampMicro,
+	time.StampNano}
+
+func parseTSString(m string) time.Time {
+	for _, f := range tsFormats {
+		if t, err := time.Parse(f, m); err == nil {
+			return t
+		}
+	}
+	return time.Time{}
+}
+
+var timestampKeys = []string{"timestamp", "@timestamp", "ts", "time", "date", "datetime"}
+
+func getTS(data *orderedmap.OrderedMap) (interface{}, bool) {
+	for _, k := range timestampKeys {
+		if v, ok := data.Get(k); ok {
+			return v, true
+		}
+	}
+	return nil, false
 }
 
 func flatten(prefix string, data, dest *orderedmap.OrderedMap) {
