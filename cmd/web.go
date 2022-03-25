@@ -16,13 +16,13 @@ import (
 	"github.com/blugelabs/bluge"
 	"github.com/spf13/cobra"
 
-	"github.com/jamillosantos/logviewer/internal/filters"
-	"github.com/jamillosantos/logviewer/internal/parsers"
-	_ "github.com/jamillosantos/logviewer/internal/parsers/json"
-	"github.com/jamillosantos/logviewer/internal/service"
-	"github.com/jamillosantos/logviewer/internal/service/entryreader"
-	"github.com/jamillosantos/logviewer/internal/service/processors"
-	"github.com/jamillosantos/logviewer/internal/transport/http"
+	"github.com/jamillosantos/lovr/internal/filters"
+	"github.com/jamillosantos/lovr/internal/parsers"
+	_ "github.com/jamillosantos/lovr/internal/parsers/json"
+	"github.com/jamillosantos/lovr/internal/service"
+	"github.com/jamillosantos/lovr/internal/service/entryreader"
+	"github.com/jamillosantos/lovr/internal/service/processors"
+	"github.com/jamillosantos/lovr/internal/transport/http"
 )
 
 var (

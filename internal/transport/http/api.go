@@ -8,8 +8,8 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	fiberws "github.com/gofiber/websocket/v2"
 
-	"github.com/jamillosantos/logviewer/internal/service/entryreader"
-	"github.com/jamillosantos/logviewer/internal/transport/http/websocket"
+	"github.com/jamillosantos/lovr/internal/service/entryreader"
+	"github.com/jamillosantos/lovr/internal/transport/http/websocket"
 )
 
 type EntryReader interface {

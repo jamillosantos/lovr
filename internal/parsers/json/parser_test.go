@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/jamillosantos/logviewer/internal/domain"
+	"github.com/jamillosantos/lovr/internal/domain"
 )
 
 var (

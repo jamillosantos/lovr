@@ -11,8 +11,8 @@ import (
 	segment "github.com/blugelabs/bluge_segment_api"
 	"go.uber.org/atomic"
 
-	"github.com/jamillosantos/logviewer/internal/domain"
-	"github.com/jamillosantos/logviewer/internal/ulid"
+	"github.com/jamillosantos/lovr/internal/domain"
+	"github.com/jamillosantos/lovr/internal/ulid"
 )
 
 const (

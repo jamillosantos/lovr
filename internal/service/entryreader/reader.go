@@ -9,8 +9,8 @@ import (
 	"github.com/blugelabs/bluge/search"
 	querystr "github.com/blugelabs/query_string"
 
-	"github.com/jamillosantos/logviewer/internal/domain"
-	"github.com/jamillosantos/logviewer/internal/service/processors"
+	"github.com/jamillosantos/lovr/internal/domain"
+	"github.com/jamillosantos/lovr/internal/service/processors"
 )
 
 type BlugeWriter interface {

@@ -1,4 +1,4 @@
-module github.com/jamillosantos/logviewer
+module github.com/jamillosantos/lovr
 
 go 1.17
 

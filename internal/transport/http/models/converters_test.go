@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/jamillosantos/logviewer/internal/domain"
+	"github.com/jamillosantos/lovr/internal/domain"
 )
 
 func Test_domainToLogEntries(t *testing.T) {

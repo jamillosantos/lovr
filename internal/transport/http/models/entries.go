@@ -3,8 +3,8 @@ package models
 import (
 	"time"
 
-	"github.com/jamillosantos/logviewer/internal/domain"
-	"github.com/jamillosantos/logviewer/internal/service/entryreader"
+	"github.com/jamillosantos/lovr/internal/domain"
+	"github.com/jamillosantos/lovr/internal/service/entryreader"
 )
 
 type Entry struct {

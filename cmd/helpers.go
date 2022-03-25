@@ -9,8 +9,8 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/jamillosantos/logviewer/internal/logctx"
-	"github.com/jamillosantos/logviewer/internal/service"
+	"github.com/jamillosantos/lovr/internal/logctx"
+	"github.com/jamillosantos/lovr/internal/service"
 )
 
 func runFetcher(ctx context.Context, entriesFetcher *service.EntriesReader, processorsList []service.EntryProcessor) {

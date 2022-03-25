@@ -12,9 +12,9 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/jamillosantos/logviewer/internal/domain"
-	"github.com/jamillosantos/logviewer/internal/service/entryreader"
-	"github.com/jamillosantos/logviewer/internal/transport/http/models"
+	"github.com/jamillosantos/lovr/internal/domain"
+	"github.com/jamillosantos/lovr/internal/service/entryreader"
+	"github.com/jamillosantos/lovr/internal/transport/http/models"
 )
 
 type mocksObj struct {

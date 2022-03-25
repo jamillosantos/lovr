@@ -7,9 +7,9 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/jamillosantos/logviewer/internal/logctx"
-	"github.com/jamillosantos/logviewer/internal/service/entryreader"
-	"github.com/jamillosantos/logviewer/internal/transport/http/models"
+	"github.com/jamillosantos/lovr/internal/logctx"
+	"github.com/jamillosantos/lovr/internal/service/entryreader"
+	"github.com/jamillosantos/lovr/internal/transport/http/models"
 )
 
 type EntriesSearcher interface {

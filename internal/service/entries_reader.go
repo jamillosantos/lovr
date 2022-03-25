@@ -5,7 +5,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/jamillosantos/logviewer/internal/domain"
+	"github.com/jamillosantos/lovr/internal/domain"
 )
 
 type EntryFetcher interface {

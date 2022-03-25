@@ -10,8 +10,8 @@ import (
 
 	"github.com/iancoleman/orderedmap"
 
-	"github.com/jamillosantos/logviewer/internal/domain"
-	"github.com/jamillosantos/logviewer/internal/parsers"
+	"github.com/jamillosantos/lovr/internal/domain"
+	"github.com/jamillosantos/lovr/internal/parsers"
 )
 
 var ErrInvalidEntryFormat = errors.New("invalid error")

@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/jamillosantos/logviewer/internal/domain"
+	"github.com/jamillosantos/lovr/internal/domain"
 )
 
 func DomainToLogEntries(entries []*domain.LogEntry) []Entry {

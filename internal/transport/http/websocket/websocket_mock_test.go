@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	entryreader "github.com/jamillosantos/logviewer/internal/service/entryreader"
+	entryreader "github.com/jamillosantos/lovr/internal/service/entryreader"
 )
 
 // MockEntriesSearcher is a mock of EntriesSearcher interface.

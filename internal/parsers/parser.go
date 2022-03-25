@@ -1,7 +1,7 @@
 package parsers
 
 import (
-	"github.com/jamillosantos/logviewer/internal/domain"
+	"github.com/jamillosantos/lovr/internal/domain"
 )
 
 type Parser interface {

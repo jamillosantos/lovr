@@ -9,11 +9,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/jamillosantos/logviewer/internal/filters"
-	"github.com/jamillosantos/logviewer/internal/parsers"
-	_ "github.com/jamillosantos/logviewer/internal/parsers/json"
-	"github.com/jamillosantos/logviewer/internal/service"
-	"github.com/jamillosantos/logviewer/internal/service/processors"
+	"github.com/jamillosantos/lovr/internal/filters"
+	"github.com/jamillosantos/lovr/internal/parsers"
+	_ "github.com/jamillosantos/lovr/internal/parsers/json"
+	"github.com/jamillosantos/lovr/internal/service"
+	"github.com/jamillosantos/lovr/internal/service/processors"
 )
 
 var (
@@ -26,7 +26,7 @@ var (
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "logviewer",
-	Short: "A brief description of your application",
+	Short: "Logviewer",
 	Long: `A longer description that spans multiple lines and likely contains
 examples and usage of using your application. For example:
 

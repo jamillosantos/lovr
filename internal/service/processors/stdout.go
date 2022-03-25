@@ -11,7 +11,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/xeonx/timeago"
 
-	"github.com/jamillosantos/logviewer/internal/domain"
+	"github.com/jamillosantos/lovr/internal/domain"
 )
 
 type Stdout struct {
