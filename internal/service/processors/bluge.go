@@ -2,9 +2,11 @@ package processors
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/blugelabs/bluge"
 	"github.com/blugelabs/bluge/index"
@@ -13,6 +15,10 @@ import (
 
 	"github.com/jamillosantos/lovr/internal/domain"
 	"github.com/jamillosantos/lovr/internal/ulid"
+)
+
+var (
+	ErrFieldTypeNotSupported = errors.New("field type not supported")
 )
 
 const (
@@ -76,6 +82,17 @@ func (s *Bluger) Process(_ context.Context, entry domain.LogEntry) error {
 			ff := bluge.NewTextField(k, vv)
 			ff.FieldOptions = fieldOptions()
 			field = ff
+		case []interface{}:
+			var value strings.Builder
+			for i, vvv := range vv {
+				if i > 0 {
+					value.WriteString(" ")
+				}
+				value.WriteString(fmt.Sprint(vvv))
+			}
+			ff := bluge.NewTextField(k, value.String())
+			ff.FieldOptions = fieldOptions()
+			field = ff
 		case int:
 			ff := bluge.NewNumericField(k, float64(vv))
 			ff.FieldOptions = fieldOptions()
@@ -93,7 +110,7 @@ func (s *Bluger) Process(_ context.Context, entry domain.LogEntry) error {
 			ff.FieldOptions = fieldOptions()
 			field = ff
 		default:
-			return fmt.Errorf("field type not supported: %s", reflect.TypeOf(v).Name())
+			return fmt.Errorf("%w: %s", ErrFieldTypeNotSupported, reflect.TypeOf(v))
 		}
 
 		doc.AddField(field)
