@@ -53,10 +53,6 @@ func (p *JSONParser) Next() (domain.LogEntry, error) {
 }
 
 func (p *JSONParser) mapToLogEntry(inputData *orderedmap.OrderedMap) domain.LogEntry {
-	data := orderedmap.New()
-
-	flatten("", inputData, data)
-
 	var (
 		ts         time.Time
 		msg        string
@@ -64,36 +60,28 @@ func (p *JSONParser) mapToLogEntry(inputData *orderedmap.OrderedMap) domain.LogE
 		caller     string
 		stacktrace string
 	)
-	if m, ok := getTS(data); ok {
+	if m, ok := getTS(inputData); ok {
 		ts = parseTS(m)
 	}
-	if s, ok := p.getString(data, "msg"); ok {
+	if s, ok := p.getString(inputData, "msg"); ok {
 		msg = s
 	}
-	if s, ok := p.getString(data, "level"); ok {
+	if s, ok := p.getString(inputData, "level"); ok {
 		level = domain.Level(s)
 	}
-	if s, ok := p.getString(data, "caller"); ok {
+	if s, ok := p.getString(inputData, "caller"); ok {
 		caller = s
 	}
-	if s, ok := p.getString(data, "stacktrace"); ok {
+	if s, ok := p.getString(inputData, "stacktrace"); ok {
 		stacktrace = s
 	}
-	data.Delete("ts")
-	data.Delete("msg")
-	data.Delete("level")
-	data.Delete("caller")
-	data.Delete("stacktrace")
+	inputData.Delete("ts")
+	inputData.Delete("msg")
+	inputData.Delete("level")
+	inputData.Delete("caller")
+	inputData.Delete("stacktrace")
 
-	keys := data.Keys()
-	f := make([]domain.LogField, 0, len(keys))
-	for _, k := range keys {
-		v, _ := data.Get(k)
-		f = append(f, domain.LogField{
-			Key:   k,
-			Value: v,
-		})
-	}
+	f := buildFieldsFromMap(inputData)
 
 	return domain.LogEntry{
 		Timestamp:  ts,
@@ -104,6 +92,28 @@ func (p *JSONParser) mapToLogEntry(inputData *orderedmap.OrderedMap) domain.LogE
 		Stacktrace: stacktrace,
 	}
 
+}
+
+func buildFieldsFromMap(data *orderedmap.OrderedMap) []domain.LogField {
+	keys := data.Keys()
+	fields := make([]domain.LogField, 0, len(keys))
+	for _, k := range keys {
+		v, _ := data.Get(k)
+		lf := domain.LogField{
+			Key:   k,
+			Value: v,
+		}
+
+		switch vv := v.(type) {
+		case orderedmap.OrderedMap:
+			lf.Value = buildFieldsFromMap(&vv)
+		case *orderedmap.OrderedMap:
+			lf.Value = buildFieldsFromMap(vv)
+		}
+
+		fields = append(fields, lf)
+	}
+	return fields
 }
 
 func parseTS(m interface{}) time.Time {

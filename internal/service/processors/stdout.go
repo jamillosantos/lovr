@@ -6,10 +6,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/fatih/color"
-	"github.com/xeonx/timeago"
 
 	"github.com/jamillosantos/lovr/internal/domain"
 )
@@ -52,6 +50,7 @@ type formatOpts struct {
 	ColumnWidth    int
 	LabelDecorator formatDecorator
 	labelAlignment labelAlignment
+	tree           bool
 }
 
 type formatOption func(o *formatOpts)
@@ -60,6 +59,7 @@ func defaultFormatOpts() formatOpts {
 	return formatOpts{
 		ColumnWidth:    0,
 		LabelDecorator: fmt.Sprintf,
+		tree:           false,
 	}
 }
 
@@ -93,16 +93,29 @@ func (s *Stdout) printTable(prefix string, table []domain.LogField, o ...formatO
 			}
 		}
 	}
-	for _, f := range table {
-		if vv, ok := f.Value.([]domain.LogField); ok {
-			s.printTable("    "+prefix, vv, o...)
-			continue
+	for i, f := range table {
+		p := ""
+		if opts.tree {
+			p = colorTree("├─ ")
+			if i == len(table)-1 {
+				p = colorTree("└─ ")
+			}
 		}
 		d := fmt.Sprintf
 		if f.Key == "error" {
 			d = levelMapping[domain.LevelError]
 		}
-		fmt.Print(d("%s%s", prefix, opts.LabelDecorator("%"+string(opts.labelAlignment)+strconv.Itoa(opts.ColumnWidth)+"s", f.Key)))
+		if vv, ok := f.Value.([]domain.LogField); ok {
+			fmt.Print(d("%s%s", prefix+p, opts.LabelDecorator("%s", f.Key)))
+			fmt.Print(":\n")
+			p := colorTree("│   ")
+			if i == len(table)-1 {
+				p = "    "
+			}
+			s.printTable(prefix+p, vv, o...)
+			continue
+		}
+		fmt.Print(d("%s%s", prefix+p, opts.LabelDecorator("%"+string(opts.labelAlignment)+strconv.Itoa(opts.ColumnWidth)+"s", f.Key)))
 		fmt.Printf(": %s\n", f.Value)
 	}
 	return
@@ -129,18 +142,26 @@ func (s *Stdout) prepareFields(inputFields []domain.LogField) []domain.LogField 
 }
 
 func (s *Stdout) Process(ctx context.Context, entry domain.LogEntry) error {
-	dataFields := s.prepareFields(entry.Fields)
+	// dataFields := s.prepareFields(entry.Fields)
+	dataFields := entry.Fields
 	data := []domain.LogField{
-		{labelLevel, s.formatLevel(entry.Level)},
-		{labelMessage, entry.Message},
-		{labelTimestamp, fmt.Sprintf("%s (%s)", entry.Timestamp.Format(time.RFC3339Nano), timeAgoDecorator(timeago.English.Format(entry.Timestamp)))},
+		{
+			Key:   labelLevel,
+			Value: s.formatLevel(entry.Level)},
+		{
+			Key:   labelMessage,
+			Value: entry.Message},
+		{
+			Key:   labelTimestamp,
+			Value: entry.Timestamp.Format("2006-01-02 15:04:05.999999999 Z07:00"),
+		},
 	}
 	if len(dataFields) > 0 {
 		data = append(data, domain.LogField{Key: labelFields, Value: ""})
 	}
 	s.printTable("", data, withColumnWidth(10), withLabelDecorator(labelDecorator))
 
-	s.printTable("      ", dataFields, withLabelAlignment(labelAlignmentLeft))
+	s.printTable("      ", dataFields, withLabelAlignment(labelAlignmentLeft), withTree())
 
 	data = []domain.LogField{}
 	if entry.Caller != "" {
@@ -154,9 +175,14 @@ func (s *Stdout) Process(ctx context.Context, entry domain.LogEntry) error {
 	if hasStacktrace {
 		s.printString("    ", s.formatStacktrace(entry.Stacktrace))
 	}
-	fmt.Println("---")
-	fmt.Println("---")
+	fmt.Println("----------------------------------------")
 	return nil
+}
+
+func withTree() formatOption {
+	return func(o *formatOpts) {
+		o.tree = true
+	}
 }
 
 var (
@@ -168,6 +194,8 @@ var (
 		domain.LevelFatal:   color.New(color.Bold, color.BgHiRed, color.FgHiWhite).Sprintf,
 		domain.LevelPanic:   color.New(color.Bold, color.BgHiRed, color.FgHiWhite).Sprintf,
 	}
+
+	colorTree = color.New(color.FgHiBlack).Sprint
 )
 
 func (s *Stdout) formatLevel(level domain.Level) string {

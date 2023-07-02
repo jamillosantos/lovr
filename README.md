@@ -14,30 +14,28 @@ Output
 ```
      Level: Info
    Message: connecting to redis
- Timestamp: 2022-03-24T23:11:16.841620445-03:00 (41 minutes ago)
+ Timestamp: 2022-03-24 23:11:16.841620445 -03:00
     Fields:
-      service   : website-api
-      version   : dev
-      build     : local
-      build_date: 20220308
-      go_version: go1.16.5
-      addresses : [redis:6379]
+      ├─ service   : website-api
+      ├─ version   : dev
+      ├─ build     : local
+      ├─ build_date: 20220308
+      ├─ go_version: go1.16.5
+      └─ addresses : [redis:6379]
     Caller: api/main.go:45
----
----
+----------------------------------------
      Level: Info
    Message: starting service
- Timestamp: 2022-03-24T23:11:16.842996597-03:00 (41 minutes ago)
+ Timestamp: 2022-03-24 23:11:16.842996597 -03:00
     Fields:
-      service           : website-api
-      version           : dev
-      build             : local
-      build_date        : 20220308
-      go_version        : go1.16.5
-      dependency.service: HTTP Server
+      ├─ service           : website-api:wq
+      ├─ version           : dev
+      ├─ build             : local
+      ├─ build_date        : 20220308
+      ├─ go_version        : go1.16.5
+      └─ dependency.service: HTTP Server
     Caller: zapreporter/reporter.go:28
----
----
+----------------------------------------
 EOF
 ```
 
