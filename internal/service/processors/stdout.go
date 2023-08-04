@@ -116,7 +116,7 @@ func (s *Stdout) printTable(prefix string, table []domain.LogField, o ...formatO
 			continue
 		}
 		fmt.Print(d("%s%s", prefix+p, opts.LabelDecorator("%"+string(opts.labelAlignment)+strconv.Itoa(opts.ColumnWidth)+"s", f.Key)))
-		fmt.Printf(": %s\n", f.Value)
+		fmt.Printf(": %v\n", f.Value)
 	}
 	return
 }
