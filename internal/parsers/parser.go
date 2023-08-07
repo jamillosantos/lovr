@@ -5,5 +5,5 @@ import (
 )
 
 type Parser interface {
-	Next() (domain.LogEntry, error)
+	Next() (domain.Entry, error)
 }

@@ -3,6 +3,7 @@ module github.com/jamillosantos/lovr
 go 1.18
 
 require (
+	github.com/antonmedv/expr v1.12.7
 	github.com/blugelabs/bluge v0.2.2
 	github.com/blugelabs/bluge_segment_api v0.2.0
 	github.com/blugelabs/query_string v0.3.0
@@ -14,7 +15,6 @@ require (
 	github.com/oklog/ulid v1.3.1
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.0
-	github.com/xeonx/timeago v1.0.0-rc5
 	go.uber.org/atomic v1.11.0
 	go.uber.org/zap v1.24.0
 )
@@ -58,6 +58,5 @@ require (
 	golang.org/x/sys v0.9.0 // indirect
 	golang.org/x/text v0.10.0 // indirect
 	golang.org/x/tools v0.6.0 // indirect
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
