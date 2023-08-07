@@ -8,8 +8,13 @@ import (
 	"github.com/jamillosantos/lovr/internal/domain"
 )
 
+var (
+	// ErrSkipEntry should be returned by an EntryProcessor to indicate that the entry should be skipped.
+	ErrSkipEntry = errors.New("skip entry")
+)
+
 type EntryFetcher interface {
-	Next() (domain.LogEntry, error)
+	Next() (domain.Entry, error)
 }
 
 type EntriesReader struct {
@@ -18,7 +23,7 @@ type EntriesReader struct {
 }
 
 type EntryProcessor interface {
-	Process(ctx context.Context, entry domain.LogEntry) error
+	Process(ctx context.Context, entry *domain.Entry) error
 }
 
 func NewEntriesReader(fetcher EntryFetcher, errorHandler func(ctx context.Context, err error) error) *EntriesReader {
@@ -48,9 +53,17 @@ func (r *EntriesReader) Start(ctx context.Context, entryProcessors ...EntryProce
 		default:
 		}
 
+	ProcessorLoop:
 		for _, ep := range entryProcessors {
-			if err := ep.Process(ctx, entry); err != nil {
-				return err
+			err := ep.Process(ctx, &entry)
+			switch {
+			case errors.Is(err, ErrSkipEntry):
+				break ProcessorLoop
+			case err != nil:
+				err = r.errorHandler(ctx, err)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}

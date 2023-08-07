@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"strings"
 
 	"github.com/spf13/cobra"
 
-	"github.com/jamillosantos/lovr/internal/filters"
 	"github.com/jamillosantos/lovr/internal/parsers"
 	_ "github.com/jamillosantos/lovr/internal/parsers/json"
 	"github.com/jamillosantos/lovr/internal/service"
@@ -17,8 +15,9 @@ import (
 )
 
 var (
-	parserArg          = "json"
-	filtersArg         = "none"
+	parserArg = "json"
+
+	filterArg          = ""
 	sourceArg          = "-"
 	showParseErrorsArg = false
 )
@@ -55,11 +54,11 @@ Examples:
 		ctx, cancelFunc := signal.NotifyContext(ctx, os.Interrupt)
 		defer cancelFunc()
 
-		if filtersArg != "none" {
-			for _, f := range strings.Split(filtersArg, ",") {
-				sourceReader = filters.New(f, sourceReader)
-			}
-		}
+		// if filtersArg != "none" {
+		// 	for _, f := range strings.Split(filtersArg, ",") {
+		// 		sourceReader = filters.New(f, sourceReader)
+		// 	}
+		// }
 
 		parser, err := parsers.New(parserArg, sourceReader)
 		if err != nil {
@@ -67,6 +66,13 @@ Examples:
 		}
 
 		processorsList := make([]service.EntryProcessor, 0)
+		if filterArg != "" {
+			filterprocessor, err := processors.NewFilter(filterArg)
+			if err != nil {
+				reportFatalError(err)
+			}
+			processorsList = append(processorsList, filterprocessor)
+		}
 		processorsList = append(processorsList, processors.NewStdout())
 
 		entriesFetcher := service.NewEntriesReader(parser, logHandler)
@@ -86,6 +92,7 @@ func Execute() {
 func init() {
 	rootCmd.PersistentFlags().BoolVar(&showParseErrorsArg, "show-parse-errors", showParseErrorsArg, "Output parse errors to the STDERR")
 	rootCmd.PersistentFlags().StringVarP(&sourceArg, "source", "s", sourceArg, "Filename of the log information (use `-` for STDIN).")
+	rootCmd.PersistentFlags().StringVarP(&filterArg, "filter", "f", filterArg, "Filename of the log information (use `-` for STDIN).")
 
 	// No filters are available yet
 	// rootCmd.PersistentFlags().StringVarP(&filtersArg, "filters", "i", filtersArg, "Comma separated list of filters to transform the source stream (docker).")

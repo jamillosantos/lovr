@@ -65,7 +65,16 @@ For this case, you have a process running adding logs to a `app.log`.
 tail -f app.log | lovr
 ```
 
-#### Loading from the STDOUT:
+#### Filtering entries
+
+```
+lovr --filter 'debug_id = "75fcd5f5-f04d-4dc7-9be3-e2e574857a76"' -s app.log
+# Or 
+lovr -f 'debug_id = "75fcd5f5-f04d-4dc7-9be3-e2e574857a76"' -s app.log 
+```
+
+
+#### Loading from the STDIN:
 
 For this case, you will run your application and its STDOUT will be redirected straight
 to the `lovr`. As long `yourapp` is running, `lovr` will be active converting the output.

@@ -1,28 +1,12 @@
 /*
 Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
 import (
-	"context"
-	"fmt"
-	"log"
-	"os"
-	"os/signal"
-	"strings"
-	"sync"
-
-	"github.com/blugelabs/bluge"
 	"github.com/spf13/cobra"
 
-	"github.com/jamillosantos/lovr/internal/filters"
-	"github.com/jamillosantos/lovr/internal/parsers"
 	_ "github.com/jamillosantos/lovr/internal/parsers/json"
-	"github.com/jamillosantos/lovr/internal/service"
-	"github.com/jamillosantos/lovr/internal/service/entryreader"
-	"github.com/jamillosantos/lovr/internal/service/processors"
-	"github.com/jamillosantos/lovr/internal/transport/http"
 )
 
 var (
@@ -36,62 +20,71 @@ var webCmd = &cobra.Command{
 	Long: `This command starts a webserver and a webpage where you will be able to view and
 search for log entries on a modern UI.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		ctx := context.Background()
+		/*
+			ctx := context.Background()
 
-		blugeConfig := bluge.InMemoryOnlyConfig()
+			blugeConfig := bluge.InMemoryOnlyConfig()
 
-		blugeWriter, err := bluge.OpenWriter(blugeConfig)
-		if err != nil {
-			log.Fatalf("error opening bluge writer: %w", err)
-		}
-		defer func() {
-			_ = blugeWriter.Close()
-		}()
-
-		sourceReader, releaseSource, err := service.GetSource(sourceArg)
-		if err != nil {
-			reportFatalError(fmt.Errorf("could not initialize source: %w", err))
-		}
-		defer releaseSource()
-
-		ctx, cancelFunc := signal.NotifyContext(ctx, os.Interrupt)
-		defer cancelFunc()
-
-		if filtersArg != "none" {
-			for _, f := range strings.Split(filtersArg, ",") {
-				sourceReader = filters.New(f, sourceReader)
+			blugeWriter, err := bluge.OpenWriter(blugeConfig)
+			if err != nil {
+				log.Fatalf("error opening bluge writer: %w", err)
 			}
-		}
+			defer func() {
+				_ = blugeWriter.Close()
+			}()
 
-		parser, err := parsers.New(parserArg, sourceReader)
-		if err != nil {
-			reportFatalError(err)
-		}
+			sourceReader, releaseSource, err := service.GetSource(sourceArg)
+			if err != nil {
+				reportFatalError(fmt.Errorf("could not initialize source: %w", err))
+			}
+			defer releaseSource()
 
-		blugerProcessor := processors.NewBluger(blugeWriter)
+			ctx, cancelFunc := signal.NotifyContext(ctx, os.Interrupt)
+			defer cancelFunc()
 
-		processorsList := make([]service.EntryProcessor, 0)
-		processorsList = append(processorsList, processors.NewStdout())
-		processorsList = append(processorsList, blugerProcessor)
+			// if filtersArg != "none" {
+			// 	for _, f := range strings.Split(filtersArg, ",") {
+			// 		sourceReader = filters.New(f, sourceReader)
+			// 	}
+			// }
 
-		var wc sync.WaitGroup
+				parser, err := parsers.New(parserArg, sourceReader)
+				if err != nil {
+					reportFatalError(err)
+				}
 
-		entriesFetcher := service.NewEntriesReader(parser, logHandler)
-		wc.Add(1)
-		go func() {
-			defer wc.Done()
-			runFetcher(ctx, entriesFetcher, processorsList)
-		}()
+						blugerProcessor := processors.NewBluger(blugeWriter)
 
-		entryReader := entryreader.NewReader(blugeWriter, blugerProcessor)
+						processorsList := make([]service.EntryProcessor, 0)
+						if filterArg != "" {
+							filterprocessor, err := processors.NewFilter(filterArg)
+							if err != nil {
+								reportFatalError(err)
+							}
+							processorsList = append(processorsList, filterprocessor)
+						}
+						processorsList = append(processorsList, processors.NewStdout())
+						processorsList = append(processorsList, blugerProcessor)
 
-		serviceAPI := http.New(entryReader, http.WithBindAddr(bindAddrArg), http.WithWC(&wc))
-		if err := serviceAPI.Start(ctx); err != nil {
-			reportFatalError(err)
-		}
+						var wc sync.WaitGroup
 
-		cancelFunc() // Close all goroutines
-		wc.Wait()
+						entriesFetcher := service.NewEntriesReader(parser, logHandler)
+						wc.Add(1)
+						go func() {
+							defer wc.Done()
+							runFetcher(ctx, entriesFetcher, processorsList)
+						}()
+
+						entryReader := entryreader.NewReader(blugeWriter, blugerProcessor)
+
+						serviceAPI := http.New(entryReader, http.WithBindAddr(bindAddrArg), http.WithWC(&wc))
+						if err := serviceAPI.Start(ctx); err != nil {
+							reportFatalError(err)
+						}
+
+					cancelFunc() // Close all goroutines
+					wc.Wait()
+		*/
 	},
 }
 
