@@ -5,8 +5,8 @@ import (
 	"errors"
 	"unsafe"
 
-	"github.com/antonmedv/expr"
-	"github.com/antonmedv/expr/vm"
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
 
 	"github.com/jamillosantos/lovr/internal/domain"
 	"github.com/jamillosantos/lovr/internal/service"

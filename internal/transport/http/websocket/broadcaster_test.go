@@ -1,4 +1,4 @@
-//go:generate go run github.com/golang/mock/mockgen -package=websocket -destination=websocket_mock_test.go . EntriesSearcher,WebsSocketConn
+//go:generate go tool mockgen -package=websocket -destination=websocket_mock_test.go . EntriesSearcher,WebsSocketConn
 package websocket
 
 import (
@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/jamillosantos/lovr/internal/domain"
