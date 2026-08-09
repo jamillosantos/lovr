@@ -5,14 +5,14 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 
 	"github.com/jamillosantos/lovr/internal/service/entryreader"
 	"github.com/jamillosantos/lovr/internal/transport/http/models"
 )
 
-func (api *API) EntriesSearch(fctx *fiber.Ctx) error {
-	ctx := fctx.UserContext()
+func (api *API) EntriesSearch(fctx fiber.Ctx) error {
+	ctx := fctx.Context()
 
 	var since, until time.Time
 	var pageSize int

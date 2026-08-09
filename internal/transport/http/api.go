@@ -4,9 +4,9 @@ import (
 	"context"
 	"sync"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors"
-	fiberws "github.com/gofiber/websocket/v2"
+	fiberws "github.com/gofiber/contrib/v3/websocket"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/cors"
 
 	"github.com/jamillosantos/lovr/internal/service/entryreader"
 	"github.com/jamillosantos/lovr/internal/transport/http/websocket"
@@ -40,8 +40,7 @@ func (api *API) Start(ctx context.Context) error {
 	defer api.wc.Done()
 
 	app := fiber.New(fiber.Config{
-		DisableStartupMessage: true,
-		AppName:               "logviewer",
+		AppName: "logviewer",
 	})
 
 	go func() {
@@ -53,17 +52,19 @@ func (api *API) Start(ctx context.Context) error {
 
 	api.setupHandlers(app)
 
-	return app.Listen(api.bindAddr)
+	return app.Listen(api.bindAddr, fiber.ListenConfig{
+		DisableStartupMessage: true,
+	})
 }
 
 func (api *API) setupHandlers(app *fiber.App) {
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "*",
-		AllowMethods: "*",
-		AllowHeaders: "*",
+		AllowOrigins: []string{"*"},
+		AllowMethods: []string{"*"},
+		AllowHeaders: []string{"*"},
 	}))
 
-	app.Use("/entries/live", func(c *fiber.Ctx) error {
+	app.Use("/entries/live", func(c fiber.Ctx) error {
 		// IsWebSocketUpgrade returns true if the client
 		// requested upgrade to the WebSocket protocol.
 		if fiberws.IsWebSocketUpgrade(c) {

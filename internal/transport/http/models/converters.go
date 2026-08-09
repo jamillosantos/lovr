@@ -1,6 +1,8 @@
 package models
 
 import (
+	"github.com/iancoleman/orderedmap"
+
 	"github.com/jamillosantos/lovr/internal/domain"
 )
 
@@ -27,15 +29,17 @@ func DomainToLogEntry(e *domain.LogEntry, dst *Entry) {
 	}
 }
 
-func DomainToLogFields(fields []domain.LogField) []*Field {
-	if len(fields) == 0 {
+func DomainToLogFields(fields orderedmap.OrderedMap) []*Field {
+	keys := fields.Keys()
+	if len(keys) == 0 {
 		return nil
 	}
-	r := make([]*Field, len(fields))
-	for i, f := range fields {
+	r := make([]*Field, len(keys))
+	for i, k := range keys {
+		v, _ := fields.Get(k)
 		r[i] = &Field{
-			Key:   f.Key,
-			Value: f.Value,
+			Key:   k,
+			Value: v,
 		}
 	}
 	return r

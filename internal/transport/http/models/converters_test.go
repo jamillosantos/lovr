@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/iancoleman/orderedmap"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/jamillosantos/lovr/internal/domain"
@@ -57,17 +58,14 @@ func Test_domainToLogEntry(t *testing.T) {
 		Caller:     "caller",
 		Stacktrace: "stacktrace",
 	}
+	fields := orderedmap.New()
+	fields.Set(want.Fields[0].Key, want.Fields[0].Value)
 	var got Entry
 	DomainToLogEntry(&domain.LogEntry{
-		Timestamp: want.Timestamp,
-		Level:     want.Level,
-		Message:   want.Message,
-		Fields: []domain.LogField{
-			{
-				Key:   want.Fields[0].Key,
-				Value: want.Fields[0].Value,
-			},
-		},
+		Timestamp:  want.Timestamp,
+		Level:      want.Level,
+		Message:    want.Message,
+		Fields:     *fields,
 		Caller:     want.Caller,
 		Stacktrace: want.Stacktrace,
 	}, &got)
@@ -76,21 +74,15 @@ func Test_domainToLogEntry(t *testing.T) {
 
 func Test_domainToLogFields(t *testing.T) {
 	t.Run("should return nil when given empty fields", func(t *testing.T) {
-		assert.Nil(t, DomainToLogFields([]domain.LogField{}))
+		assert.Nil(t, DomainToLogFields(*orderedmap.New()))
 	})
 
 	t.Run("should return a list of fields", func(t *testing.T) {
-		got := DomainToLogFields([]domain.LogField{
-			{
-				Key:   "key1",
-				Value: "value1",
-			},
-			{
-				Key:   "key2",
-				Value: 2,
-			},
-		})
-		assert.ElementsMatch(t, []*Field{
+		fields := orderedmap.New()
+		fields.Set("key1", "value1")
+		fields.Set("key2", 2)
+		got := DomainToLogFields(*fields)
+		assert.Equal(t, []*Field{
 			{
 				Key:   "key1",
 				Value: "value1",
