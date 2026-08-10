@@ -14,6 +14,8 @@ export interface AbsoluteRange {
 export type TimeRange = PresetRange | AbsoluteRange | null;
 
 export const PRESETS: { id: string; label: string; ms: number }[] = [
+	{ id: "5m", label: "Last 5 minutes", ms: 5 * 60_000 },
+	{ id: "10m", label: "Last 10 minutes", ms: 10 * 60_000 },
 	{ id: "15m", label: "Last 15 minutes", ms: 15 * 60_000 },
 	{ id: "30m", label: "Last 30 minutes", ms: 30 * 60_000 },
 	{ id: "1h", label: "Last hour", ms: 60 * 60_000 },
