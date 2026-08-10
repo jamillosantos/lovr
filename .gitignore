@@ -5,3 +5,4 @@ vendor/
 *.exe
 
 graphify-out/
+test-logs.jsonl

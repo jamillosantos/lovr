@@ -9,6 +9,13 @@
          keeps unset reads from crashing in the browser. -->
     <script>
       globalThis.process ??= { env: {} };
+      const storedTheme = localStorage.getItem("theme");
+      document.documentElement.classList.toggle(
+        "dark",
+        storedTheme
+          ? storedTheme === "dark"
+          : window.matchMedia("(prefers-color-scheme: dark)").matches,
+      );
     </script>
     <script type="module" src="./frontend.tsx" async></script>
   </head>
