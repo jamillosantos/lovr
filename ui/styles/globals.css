@@ -225,7 +225,10 @@
 		@apply relative;
 	}
 	.histogram-svg {
-		@apply block;
+		@apply block cursor-crosshair select-none;
+	}
+	.histogram-brush {
+		@apply fill-ring/25 stroke-ring;
 	}
 	.histogram-empty {
 		@apply flex h-24 items-center justify-center text-muted-foreground text-xs;

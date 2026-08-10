@@ -154,6 +154,7 @@ export function App() {
 			<Histogram
 				groupBy={groupBy}
 				onGroupByChange={changeGroupBy}
+				onRangeSelect={(from, to) => changeRange({ from, to })}
 				paused={paused}
 				query={query}
 				range={range}

@@ -68,6 +68,7 @@ export function Histogram({
 	paused,
 	groupBy,
 	onGroupByChange,
+	onRangeSelect,
 }: {
 	query: string;
 	range: TimeRange;
@@ -75,12 +76,18 @@ export function Histogram({
 	paused: boolean;
 	groupBy: string;
 	onGroupByChange: (groupBy: string) => void;
+	onRangeSelect: (from: string, to: string) => void;
 }) {
 	const [data, setData] = useState<HistogramResponse | null>(null);
 	const [fields, setFields] = useState<string[]>([]);
 	const [hover, setHover] = useState<number | null>(null);
 	const [width, setWidth] = useState(0);
+	const [drag, setDrag] = useState<{ start: number; current: number } | null>(
+		null,
+	);
 	const containerRef = useRef<HTMLDivElement>(null);
+	const dataRef = useRef(data);
+	dataRef.current = data;
 
 	const rangeKey = JSON.stringify(range);
 
@@ -148,7 +155,38 @@ export function Histogram({
 	const barWidth = Math.max(2, slot - BAR_GAP);
 	const usableHeight = CHART_HEIGHT - 2;
 
-	const hovered = hover !== null ? buckets[hover] : undefined;
+	const hovered = hover !== null && drag === null ? buckets[hover] : undefined;
+
+	// startDrag brushes a time selection; on release wider than a few pixels
+	// it becomes the custom time range.
+	const startDrag = (downEvent: React.MouseEvent<SVGSVGElement>) => {
+		const rect = downEvent.currentTarget.getBoundingClientRect();
+		const clamp = (clientX: number) =>
+			Math.max(0, Math.min(rect.width, clientX - rect.left));
+		const start = clamp(downEvent.clientX);
+		setDrag({ start, current: start });
+
+		const onMove = (event: MouseEvent) => {
+			setDrag({ start, current: clamp(event.clientX) });
+		};
+		const onUp = (event: MouseEvent) => {
+			window.removeEventListener("mousemove", onMove);
+			window.removeEventListener("mouseup", onUp);
+			setDrag(null);
+			const end = clamp(event.clientX);
+			const current = dataRef.current;
+			if (!current || Math.abs(end - start) < 5 || rect.width === 0) {
+				return;
+			}
+			const t0 = new Date(current.start).getTime();
+			const t1 = new Date(current.end).getTime();
+			const at = (x: number) => new Date(t0 + (x / rect.width) * (t1 - t0));
+			const [a, b] = start < end ? [start, end] : [end, start];
+			onRangeSelect(at(a).toISOString(), at(b).toISOString());
+		};
+		window.addEventListener("mousemove", onMove);
+		window.addEventListener("mouseup", onUp);
+	};
 
 	return (
 		<div className="histogram">
@@ -160,6 +198,7 @@ export function Histogram({
 					<svg
 						className="histogram-svg"
 						height={CHART_HEIGHT}
+						onMouseDown={startDrag}
 						onMouseLeave={() => setHover(null)}
 						onMouseMove={(event) => {
 							const rect = event.currentTarget.getBoundingClientRect();
@@ -170,12 +209,21 @@ export function Histogram({
 						}}
 						width={width}
 					>
-						{hover !== null && (
+						{hover !== null && drag === null && (
 							<rect
 								className="histogram-hover-band"
 								height={CHART_HEIGHT}
 								width={slot}
 								x={hover * slot}
+								y={0}
+							/>
+						)}
+						{drag !== null && (
+							<rect
+								className="histogram-brush"
+								height={CHART_HEIGHT}
+								width={Math.abs(drag.current - drag.start)}
+								x={Math.min(drag.start, drag.current)}
 								y={0}
 							/>
 						)}
