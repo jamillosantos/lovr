@@ -262,8 +262,20 @@
 	.detail-field-key {
 		@apply shrink-0 text-muted-foreground;
 	}
+	.detail-field-key-clickable {
+		@apply cursor-pointer hover:text-foreground;
+	}
+	.detail-field-static {
+		@apply cursor-default hover:bg-transparent;
+	}
 	.detail-field-value {
 		@apply flex-1;
+	}
+	.detail-field-items {
+		@apply flex flex-wrap gap-1;
+	}
+	.detail-field-item {
+		@apply cursor-pointer rounded bg-muted px-1.5 py-0.5 hover:bg-accent hover:text-accent-foreground;
 	}
 	.detail-value {
 		@apply break-all;

@@ -30,6 +30,84 @@ function fieldValueText(value: unknown): string {
 	return String(value);
 }
 
+function FieldMenuContent({
+	field,
+	onAddToSearch,
+}: {
+	field: Field;
+	onAddToSearch?: (field: Field) => void;
+}) {
+	const scalar = typeof field.value !== "object" || field.value === null;
+
+	return (
+		<DropdownMenuContent align="start">
+			<DropdownMenuItem
+				onSelect={() =>
+					navigator.clipboard.writeText(fieldValueText(field.value))
+				}
+			>
+				<Copy />
+				Copy value
+			</DropdownMenuItem>
+			<DropdownMenuItem
+				onSelect={() => navigator.clipboard.writeText(field.key)}
+			>
+				<Copy />
+				Copy key
+			</DropdownMenuItem>
+			{scalar && onAddToSearch && (
+				<DropdownMenuItem onSelect={() => onAddToSearch(field)}>
+					<Search />
+					Add to search
+				</DropdownMenuItem>
+			)}
+		</DropdownMenuContent>
+	);
+}
+
+// ArrayFieldRow renders one menu per item (searchable individually) plus a
+// whole-value menu on the key.
+function ArrayFieldRow({
+	field,
+	items,
+	onAddToSearch,
+}: {
+	field: Field;
+	items: unknown[];
+	onAddToSearch: (field: Field) => void;
+}) {
+	return (
+		<div className="detail-field detail-field-static">
+			<DropdownMenu>
+				<DropdownMenuTrigger asChild>
+					<dt
+						className="detail-field-key detail-field-key-clickable"
+						aria-label={`Actions for ${field.key}`}
+					>
+						{field.key}:
+					</dt>
+				</DropdownMenuTrigger>
+				<FieldMenuContent field={field} />
+			</DropdownMenu>
+			<dd className="detail-field-value detail-field-items">
+				{items.map((item, index) => (
+					<DropdownMenu key={`${fieldValueText(item)}-${index}`}>
+						<DropdownMenuTrigger asChild>
+							<button className="detail-field-item">
+								{fieldValueText(item)}
+							</button>
+						</DropdownMenuTrigger>
+						<FieldMenuContent
+							field={{ key: field.key, value: item }}
+							onAddToSearch={onAddToSearch}
+						/>
+					</DropdownMenu>
+				))}
+			</dd>
+		</div>
+	);
+}
+
 function FieldRow({
 	field,
 	onAddToSearch,
@@ -37,7 +115,15 @@ function FieldRow({
 	field: Field;
 	onAddToSearch: (field: Field) => void;
 }) {
-	const scalar = typeof field.value !== "object" || field.value === null;
+	if (Array.isArray(field.value)) {
+		return (
+			<ArrayFieldRow
+				field={field}
+				items={field.value}
+				onAddToSearch={onAddToSearch}
+			/>
+		);
+	}
 
 	return (
 		<DropdownMenu>
@@ -49,28 +135,7 @@ function FieldRow({
 					</dd>
 				</div>
 			</DropdownMenuTrigger>
-			<DropdownMenuContent align="start">
-				<DropdownMenuItem
-					onSelect={() =>
-						navigator.clipboard.writeText(fieldValueText(field.value))
-					}
-				>
-					<Copy />
-					Copy value
-				</DropdownMenuItem>
-				<DropdownMenuItem
-					onSelect={() => navigator.clipboard.writeText(field.key)}
-				>
-					<Copy />
-					Copy key
-				</DropdownMenuItem>
-				{scalar && (
-					<DropdownMenuItem onSelect={() => onAddToSearch(field)}>
-						<Search />
-						Add to search
-					</DropdownMenuItem>
-				)}
-			</DropdownMenuContent>
+			<FieldMenuContent field={field} onAddToSearch={onAddToSearch} />
 		</DropdownMenu>
 	);
 }
