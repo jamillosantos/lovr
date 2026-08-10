@@ -10,6 +10,7 @@ import {
 	PopoverTrigger,
 } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
+import { useSettings } from "@/lib/settings.tsx";
 import {
 	isPreset,
 	PRESETS,
@@ -33,6 +34,7 @@ export function TimeFilter({
 	range: TimeRange;
 	onChange: (range: TimeRange) => void;
 }) {
+	const { settings } = useSettings();
 	const [open, setOpen] = useState(false);
 	const [days, setDays] = useState<DateRange | undefined>();
 	const [fromTime, setFromTime] = useState("");
@@ -58,7 +60,7 @@ export function TimeFilter({
 			<PopoverTrigger asChild>
 				<Button variant="outline" size="sm" aria-label="Time range">
 					<Clock />
-					{rangeLabel(range)}
+					{rangeLabel(range, settings.timezone)}
 				</Button>
 			</PopoverTrigger>
 			<PopoverContent align="end" className="time-filter">

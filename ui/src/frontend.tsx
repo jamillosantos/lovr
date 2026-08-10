@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "@/App.tsx";
+import { SettingsProvider } from "@/lib/settings.tsx";
 
 const elem = document.getElementById("root");
 if (!elem) {
@@ -9,7 +10,9 @@ if (!elem) {
 
 const app = (
 	<StrictMode>
-		<App />
+		<SettingsProvider>
+			<App />
+		</SettingsProvider>
 	</StrictMode>
 );
 

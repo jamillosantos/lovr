@@ -1,3 +1,5 @@
+import { formatShortPoint } from "@/lib/datetime.ts";
+
 // Time range filtering: quick presets and absolute ranges, persisted in the
 // URL and resolved to since/until instants when a stream (re)starts.
 
@@ -49,20 +51,14 @@ export function resolveRange(
 	return { since: range.from, until: range.to };
 }
 
-export function rangeLabel(range: TimeRange): string {
+export function rangeLabel(range: TimeRange, timezone = "local"): string {
 	if (range === null) {
 		return "All time";
 	}
 	if (isPreset(range)) {
 		return PRESETS.find((p) => p.id === range.preset)?.label ?? "All time";
 	}
-	const fmt = (iso: string) =>
-		new Date(iso).toLocaleString(undefined, {
-			month: "short",
-			day: "numeric",
-			hour: "2-digit",
-			minute: "2-digit",
-		});
+	const fmt = (iso: string) => formatShortPoint(iso, timezone);
 	return range.to
 		? `${fmt(range.from)} – ${fmt(range.to)}`
 		: `Since ${fmt(range.from)}`;

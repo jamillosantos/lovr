@@ -1,4 +1,3 @@
-import { format } from "date-fns";
 import { Copy, EyeOff, Search, SearchX, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { LevelBadge } from "@/components/LevelBadge.tsx";
@@ -14,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import type { Entry, Field } from "@/domain/models.ts";
+import { formatFullTimestamp } from "@/lib/datetime.ts";
+import { useSettings } from "@/lib/settings.tsx";
 
 function FieldValue({ value }: { value: unknown }) {
 	if (typeof value === "object" && value !== null) {
@@ -223,6 +224,7 @@ export function LogDetail({
 	onClose: () => void;
 	onSearchAction: (field: Field, action: SearchAction) => void;
 }) {
+	const { settings } = useSettings();
 	const [fieldFilter, setFieldFilter] = useState("");
 
 	const sortedFields = useMemo(
@@ -249,7 +251,7 @@ export function LogDetail({
 					<div className="detail-header-row">
 						<LevelBadge level={entry.level} />
 						<time className="detail-time">
-							{format(new Date(entry.timestamp), "yyyy-MM-dd HH:mm:ss.SSS XXX")}
+							{formatFullTimestamp(entry.timestamp, settings.timezone)}
 						</time>
 					</div>
 					<p className="detail-message">{entry.message}</p>

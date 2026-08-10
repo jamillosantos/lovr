@@ -1,4 +1,3 @@
-import { format } from "date-fns";
 import { ChartColumnBig } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +13,8 @@ import {
 	fetchHistogram,
 	type HistogramResponse,
 } from "@/lib/api.ts";
+import { formatShortPoint, formatTooltipTime } from "@/lib/datetime.ts";
+import { useSettings } from "@/lib/settings.tsx";
 import { resolveRange, type TimeRange } from "@/lib/timerange.ts";
 
 const CHART_HEIGHT = 96;
@@ -78,6 +79,7 @@ export function Histogram({
 	onGroupByChange: (groupBy: string) => void;
 	onRangeSelect: (from: string, to: string) => void;
 }) {
+	const { settings } = useSettings();
 	const [data, setData] = useState<HistogramResponse | null>(null);
 	const [fields, setFields] = useState<string[]>([]);
 	const [hover, setHover] = useState<number | null>(null);
@@ -276,7 +278,7 @@ export function Histogram({
 						}}
 					>
 						<div className="histogram-tooltip-time">
-							{format(new Date(hovered.start), "MMM d HH:mm:ss")}
+							{formatTooltipTime(hovered.start, settings.timezone)}
 						</div>
 						{groups.map((group) => (
 							<div className="histogram-tooltip-row" key={group}>
@@ -299,7 +301,7 @@ export function Histogram({
 			<div className="histogram-footer">
 				{data && (
 					<span className="histogram-axis">
-						{format(new Date(data.start), "MMM d HH:mm")}
+						{formatShortPoint(data.start, settings.timezone)}
 					</span>
 				)}
 				<div className="histogram-legend">
@@ -348,7 +350,7 @@ export function Histogram({
 				</DropdownMenu>
 				{data && (
 					<span className="histogram-axis">
-						{format(new Date(data.end), "MMM d HH:mm")}
+						{formatShortPoint(data.end, settings.timezone)}
 					</span>
 				)}
 			</div>

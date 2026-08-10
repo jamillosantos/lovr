@@ -1,9 +1,10 @@
-import { format } from "date-fns";
 import { Loader2 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { LevelBadge } from "@/components/LevelBadge.tsx";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Entry } from "@/domain/models.ts";
+import { formatListTimestamp } from "@/lib/datetime.ts";
+import { useSettings } from "@/lib/settings.tsx";
 import { cn } from "@/lib/utils";
 
 // columnClass gives each column its width so header and row cells align.
@@ -20,12 +21,20 @@ function columnClass(column: string): string {
 	}
 }
 
-function Cell({ column, entry }: { column: string; entry: Entry }) {
+function Cell({
+	column,
+	entry,
+	timezone,
+}: {
+	column: string;
+	entry: Entry;
+	timezone: string;
+}) {
 	switch (column) {
 		case "timestamp":
 			return (
 				<time className="log-row-time">
-					{format(new Date(entry.timestamp), "MM-dd HH:mm:ss.SSS")}
+					{formatListTimestamp(entry.timestamp, timezone)}
 				</time>
 			);
 		case "level":
@@ -66,6 +75,7 @@ export function LogList({
 	loadingOlder?: boolean;
 	exhausted?: boolean;
 }) {
+	const { settings } = useSettings();
 	const sentinelRef = useRef<HTMLDivElement>(null);
 	const onEndReachedRef = useRef(onEndReached);
 	onEndReachedRef.current = onEndReached;
@@ -113,7 +123,12 @@ export function LogList({
 								onClick={() => onSelect(entry)}
 							>
 								{columns.map((column) => (
-									<Cell column={column} entry={entry} key={column} />
+									<Cell
+										column={column}
+										entry={entry}
+										key={column}
+										timezone={settings.timezone}
+									/>
 								))}
 							</button>
 						</li>

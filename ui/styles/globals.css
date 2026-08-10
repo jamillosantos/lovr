@@ -290,6 +290,26 @@
 		@apply w-full;
 	}
 
+	/* Settings */
+	.settings-options {
+		@apply flex gap-2;
+	}
+	.settings-option {
+		@apply cursor-pointer rounded-sm border px-2 py-1 text-left text-xs hover:bg-accent hover:text-accent-foreground;
+	}
+	.settings-option-active {
+		@apply border-ring bg-accent text-accent-foreground;
+	}
+	.settings-zone-filter {
+		@apply relative;
+	}
+	.settings-zones {
+		@apply flex max-h-64 flex-col gap-0.5 overflow-y-auto;
+	}
+	.settings-zones .settings-option {
+		@apply border-transparent;
+	}
+
 	/* Connection status */
 	.status-button {
 		@apply text-muted-foreground text-xs;

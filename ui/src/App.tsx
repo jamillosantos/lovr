@@ -6,6 +6,7 @@ import { Histogram } from "@/components/Histogram.tsx";
 import { LogDetail, type SearchAction } from "@/components/LogDetail.tsx";
 import { LogList } from "@/components/LogList.tsx";
 import { SearchBar } from "@/components/SearchBar.tsx";
+import { SettingsDialog } from "@/components/SettingsDialog.tsx";
 import { ThemeToggle } from "@/components/ThemeToggle.tsx";
 import { TimeFilter } from "@/components/TimeFilter.tsx";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -148,6 +149,7 @@ export function App() {
 					paused={paused}
 				/>
 
+				<SettingsDialog />
 				<ThemeToggle />
 			</header>
 
