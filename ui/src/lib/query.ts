@@ -11,3 +11,17 @@ export function appendTerm(query: string, term: string): string {
 	const trimmed = query.trim();
 	return trimmed ? `${trimmed} ${term}` : term;
 }
+
+// Extracts the search query from a location search string (?q=...).
+export function queryFromSearch(search: string): string {
+	return new URLSearchParams(search).get("q") ?? "";
+}
+
+// Builds the URL that persists a query, dropping the parameter when empty.
+export function searchURL(pathname: string, query: string): string {
+	const trimmed = query.trim();
+	if (!trimmed) {
+		return pathname;
+	}
+	return `${pathname}?${new URLSearchParams({ q: trimmed })}`;
+}

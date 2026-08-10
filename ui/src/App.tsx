@@ -1,5 +1,5 @@
 import { AlertCircle, Pause, Play, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ConnectionStatus } from "@/components/ConnectionStatus.tsx";
 import { LogDetail } from "@/components/LogDetail.tsx";
 import { LogList } from "@/components/LogList.tsx";
@@ -10,19 +10,44 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import type { Entry, Field } from "@/domain/models.ts";
 import { useLiveEntries } from "@/hooks/useLiveEntries.ts";
-import { appendTerm, fieldTerm } from "@/lib/query.ts";
+import {
+	appendTerm,
+	fieldTerm,
+	queryFromSearch,
+	searchURL,
+} from "@/lib/query.ts";
 
 export function App() {
-	const [queryInput, setQueryInput] = useState("");
-	const [query, setQuery] = useState("");
+	const [queryInput, setQueryInput] = useState(() =>
+		queryFromSearch(window.location.search),
+	);
+	const [query, setQuery] = useState(queryInput);
 	const [refresh, setRefresh] = useState(0);
 	const [selected, setSelected] = useState<Entry | undefined>();
 
-	const runQuery = (q: string) => {
+	const runQuery = (q: string, pushHistory = true) => {
 		setQuery(q);
 		// Bumping the nonce restarts the stream even for an unchanged query.
 		setRefresh((r) => r + 1);
+		if (pushHistory) {
+			const url = searchURL(window.location.pathname, q);
+			const current = window.location.pathname + window.location.search;
+			if (url !== current) {
+				window.history.pushState(null, "", url);
+			}
+		}
 	};
+
+	// Restore the query when navigating browser history.
+	useEffect(() => {
+		const onPopState = () => {
+			const q = queryFromSearch(window.location.search);
+			setQueryInput(q);
+			runQuery(q, false);
+		};
+		window.addEventListener("popstate", onPopState);
+		return () => window.removeEventListener("popstate", onPopState);
+	}, []);
 
 	const addToSearch = (field: Field) => {
 		const next = appendTerm(queryInput, fieldTerm(field.key, field.value));

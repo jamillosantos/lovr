@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { lastToken, replaceLastToken, splitToken } from "./autocomplete.ts";
-import { appendTerm, fieldTerm } from "./query.ts";
+import { appendTerm, fieldTerm, queryFromSearch, searchURL } from "./query.ts";
 
 describe("lastToken", () => {
 	test("empty input", () => {
@@ -93,5 +93,29 @@ describe("appendTerm", () => {
 	});
 	test("no leading space on empty query", () => {
 		expect(appendTerm("", "status:404")).toBe("status:404");
+	});
+});
+
+describe("queryFromSearch", () => {
+	test("reads q", () => {
+		expect(queryFromSearch("?q=level%3Aerror+timeout")).toBe(
+			"level:error timeout",
+		);
+	});
+	test("empty when missing", () => {
+		expect(queryFromSearch("")).toBe("");
+	});
+});
+
+describe("searchURL", () => {
+	test("encodes the query", () => {
+		expect(searchURL("/", 'msg:"a b"')).toBe("/?q=msg%3A%22a+b%22");
+	});
+	test("drops the parameter when empty", () => {
+		expect(searchURL("/", "  ")).toBe("/");
+	});
+	test("round-trips", () => {
+		const q = 'level:error msg:"failed to process" -service:billing';
+		expect(queryFromSearch(searchURL("/", q).slice(1))).toBe(q);
 	});
 });
