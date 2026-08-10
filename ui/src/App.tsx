@@ -1,109 +1,108 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import Header from "./components/Header";
-import LogLevel from "./components/Table/LogLevel";
-import Table from "./components/Table/Table";
-import { Entry } from "./domain/models";
-import api from "./service/api";
+import clsx from "clsx";
+import { Pause, Play, Search, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { LogDetail } from "@/components/LogDetail.tsx";
+import { LogList } from "@/components/LogList.tsx";
+import type { Entry } from "@/domain/models.ts";
+import { useLiveEntries } from "@/hooks/useLiveEntries.ts";
 
-import "./index.css";
-import { useLocation, useNavigate } from "react-router-dom";
-import QueryString from "qs";
-import DateText from "./components/DateText";
-import SettingsContext, { Settings, SettingsHandler } from "./contexts/Settings";
-import SettingsWindow from "./SettingsWindow";
+const connectionLabels = {
+	connecting: ["bg-level-warning", "Connecting"],
+	connected: ["bg-level-info", "Live"],
+	closed: ["bg-level-error", "Disconnected"],
+} as const;
 
-const columns = [
-  // {
-  //   Header: "",
-  //   accessor: "level",
-  //   maxWidth: 1,
-  //   Cell: ({ cell: { value } }: any) => (
-  //     <LogLevel className="-ml-1 -mr-3" level={value} />
-  //   ),
-  // },
-  {
-    Header: "Timestamp",
-    accessor: "timestamp",
-    width: 30,
-    className: "bg-red-500",
-    Cell: ({ row, cell: { value } }: any) => {
-      return (
-      <div className="flex">
-        <LogLevel level={row.original.level} />
-        <DateText className="ml-2" value={value} />
-      </div>
-    )},
-  },
-  {
-    Header: "Message",
-    accessor: "message",
-    width: 0,
-  },
-];
+export function App() {
+	const [queryInput, setQueryInput] = useState("");
+	const [query, setQuery] = useState("");
+	const [refresh, setRefresh] = useState(0);
+	const [selected, setSelected] = useState<Entry | undefined>();
 
-function App() {
-  const [logs, setLogs] = React.useState<Entry[]>([]);
-  const [logsCount, setLogsCount] = React.useState(0);
+	const { entries, connection, error, paused, setPaused, clear } =
+		useLiveEntries(query, refresh);
 
-  const navigateTo = useNavigate();
+	const selectedEntry = useMemo(
+		() => entries.find((e) => e.$id === selected?.$id) ?? selected,
+		[entries, selected],
+	);
 
-  const { search: searchStr } = useLocation();
-  const qs = useMemo(
-    () => QueryString.parse(searchStr.substring(1)),
-    [searchStr]
-  );
+	const [dotClass, connectionLabel] = connectionLabels[connection];
 
-  useEffect(() => {
-    (async () => {
-      const r = await api.getLogs({});
-      setLogs(r.entries!);
-      setLogsCount(r.count);
-    })();
-  }, []);
+	return (
+		<div className="flex h-screen flex-col">
+			<header className="flex items-center gap-3 border-border border-b bg-card px-4 py-2">
+				<h1 className="font-bold text-sm tracking-wide">lovr</h1>
 
-  const recordSelected = useMemo(
-    () => logs.find((o) => o.$id === qs.$id),
-    [qs.$id, logs]
-  );
+				<form
+					className="flex flex-1 items-center gap-2"
+					onSubmit={(event) => {
+						event.preventDefault();
+						setQuery(queryInput);
+						// Re-submitting the same query restarts the stream too.
+						setRefresh((r) => r + 1);
+					}}
+				>
+					<div className="relative flex-1">
+						<Search
+							className="-translate-y-1/2 absolute top-1/2 left-2 text-muted-foreground"
+							size={14}
+						/>
+						<input
+							className="w-full rounded border border-border bg-background py-1.5 pr-3 pl-7 font-mono text-xs outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-ring"
+							placeholder="Search… (e.g. timeout, level:error, nested.host:db1)"
+							value={queryInput}
+							onChange={(event) => setQueryInput(event.target.value)}
+						/>
+					</div>
+				</form>
 
-  const onSelectHandler = useCallback(
-    (e, row) => {
-      navigateTo({
-        search: QueryString.stringify({ ...qs, $id: row?.$id }),
-      });
-    },
-    [qs, navigateTo]
-  );
+				<button
+					className="flex items-center gap-1.5 rounded border border-border px-2 py-1.5 text-muted-foreground text-xs hover:bg-muted hover:text-foreground"
+					onClick={() => setPaused(!paused)}
+				>
+					{paused ? <Play size={12} /> : <Pause size={12} />}
+					{paused ? "Resume" : "Pause"}
+				</button>
 
-  const [settings, setSettings] = useState<Settings>({
-    timezone: "local",
-  })
+				<button
+					className="flex items-center gap-1.5 rounded border border-border px-2 py-1.5 text-muted-foreground text-xs hover:bg-muted hover:text-foreground"
+					onClick={clear}
+				>
+					<Trash2 size={12} />
+					Clear
+				</button>
 
-  const settingsValue = useMemo<SettingsHandler>(() => ({
-    settings: settings,
-    updateSettings: setSettings,
-  }), [settings]);
+				<div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+					<span
+						className={clsx(
+							"inline-block size-2 rounded-full",
+							paused ? "bg-level-warning" : dotClass,
+						)}
+					/>
+					{paused ? "Paused" : connectionLabel}
+					<span className="ml-2 font-mono">{entries.length}</span>
+				</div>
+			</header>
 
-  return (
-    <SettingsContext.Provider value={settingsValue}>
-      <div className="min-h-screen bg-white dark:bg-slate-900">
-        <Header />
-        <main className="p-4">
-          {/* <div className="bg-gray-100 dark:bg-black/50 rounded-t-lg border-b-2 border-b-sky-500  px-4 mb-4 h-[80px]"></div> */}
-          <div className="shadow overflow-hidden bg-transparency-1 border border-transparent border-b-gray-200 dark:border dark:border-transparent rounded-lg">
-            <Table
-              columns={columns}
-              data={logs}
-              count={logsCount}
-              onSelectRecord={onSelectHandler}
-              selected={recordSelected?.$id}
-            />
-          </div>
-        </main>
-      </div>
-      <SettingsWindow />
-    </SettingsContext.Provider>
-  );
+			{error && (
+				<div className="border-level-error/40 border-b bg-level-error/10 px-4 py-1.5 font-mono text-level-error text-xs">
+					{error}
+				</div>
+			)}
+
+			<main className="flex min-h-0 flex-1">
+				<LogList
+					entries={entries}
+					selectedID={selectedEntry?.$id}
+					onSelect={setSelected}
+				/>
+				{selectedEntry && (
+					<LogDetail
+						entry={selectedEntry}
+						onClose={() => setSelected(undefined)}
+					/>
+				)}
+			</main>
+		</div>
+	);
 }
-
-export default App;

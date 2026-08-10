@@ -2,7 +2,8 @@ package entryreader
 
 import (
 	"context"
-	"log"
+	"fmt"
+	"math"
 	"time"
 
 	"github.com/blugelabs/bluge"
@@ -44,6 +45,10 @@ type SearchRequest struct {
 	Until    time.Time
 	Query    string
 	PageSize int
+	// Ascending returns the oldest matching entries first (used by the live
+	// tail to page through a window without losing entries). Default is
+	// newest first.
+	Ascending bool
 }
 
 type SearchResponse struct {
@@ -57,10 +62,22 @@ func (r *Reader) Search(_ context.Context, req SearchRequest) (SearchResponse, e
 	if err != nil {
 		return SearchResponse{}, err
 	}
+	defer func() {
+		_ = blugeReader.Close()
+	}()
 
 	qs := make([]bluge.Query, 0)
 	if !req.Since.IsZero() || !req.Until.IsZero() {
-		qs = append(qs, bluge.NewDateRangeInclusiveQuery(req.Since, req.Until, false, false).SetField(processors.FieldTimestamp))
+		until := req.Until
+		if until.IsZero() {
+			// bluge encodes timestamps as unix nanoseconds; this is the
+			// highest bound it can represent (year 2262).
+			until = time.Unix(0, math.MaxInt64)
+		}
+		// The lower bound is inclusive: entries sharing the boundary
+		// timestamp may be indexed after a poll read it, and consumers
+		// deduplicate by entry ID.
+		qs = append(qs, bluge.NewDateRangeInclusiveQuery(req.Since, until, true, false).SetField(processors.FieldTimestamp))
 	}
 	if req.Query != "" {
 		q, err := querystr.ParseQueryString(req.Query, querystr.DefaultOptions())
@@ -86,13 +103,17 @@ func (r *Reader) Search(_ context.Context, req SearchRequest) (SearchResponse, e
 		pageSize = 200
 	}
 
+	sortOrder := "-" + processors.FieldTimestamp
+	if req.Ascending {
+		sortOrder = processors.FieldTimestamp
+	}
 	request := bluge.NewTopNSearch(pageSize, q).
-		SortBy([]string{"-" + processors.FieldTimestamp}).
+		SortBy([]string{sortOrder}).
 		WithStandardAggregations().
 		IncludeLocations()
 	documentMatchIterator, err := blugeReader.Search(context.Background(), request)
 	if err != nil {
-		log.Fatalf("error executing search: %v", err)
+		return SearchResponse{}, fmt.Errorf("error executing search: %w", err)
 	}
 
 	entries := make([]*domain.LogEntry, 0)
@@ -127,12 +148,12 @@ func (r *Reader) Search(_ context.Context, req SearchRequest) (SearchResponse, e
 			return true
 		})
 		if err != nil {
-			log.Fatalf("error loading stored fields: %v", err)
+			return SearchResponse{}, fmt.Errorf("error loading stored fields: %w", err)
 		}
 		match, err = documentMatchIterator.Next()
 	}
 	if err != nil {
-		log.Fatalf("error iterator document matches: %v", err)
+		return SearchResponse{}, fmt.Errorf("error iterating document matches: %w", err)
 	}
 
 	return SearchResponse{

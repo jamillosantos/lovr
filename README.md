@@ -125,3 +125,35 @@ command.
 ```
 docker-compose logs -f --no-log-prefix api | lovr
 ```
+
+### Web UI
+
+The `web` command does everything the default command does and additionally
+indexes every entry into an in-memory search index (bluge), exposing a web UI
+with live tail and full-text search:
+
+```
+./yourapp | lovr web
+```
+
+Then open http://127.0.0.1:8080 (change with `-b`). The search box accepts
+plain terms (`timeout`), fielded queries (`level:error`, `nested.host:db1`)
+and anything else the [bluge query string
+syntax](https://github.com/blugelabs/query_string) supports.
+
+The UI (bun + React + Tailwind) lives in `ui/` and is embedded into the
+binary when building with the `ui` tag:
+
+```
+cd ui && bun install && bun run build && cd ..
+go build -tags ui -o lovr ./lovr
+```
+
+Binaries built without the tag still serve the HTTP/websocket API, only
+without the web page. For UI development, run the backend and the bun dev
+server side by side:
+
+```
+./yourapp | go run ./lovr web                     # API at 127.0.0.1:8080
+cd ui && BUN_PUBLIC_API_URL=http://127.0.0.1:8080 bun dev
+```

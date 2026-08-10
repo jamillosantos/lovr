@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/blugelabs/bluge"
 	"github.com/blugelabs/bluge/index"
@@ -48,6 +49,12 @@ func NewBluger(writer *bluge.Writer) *Bluger {
 
 func (s *Bluger) Process(_ context.Context, entry *domain.Entry) error {
 	logEntry := mapToLogEntry(entry)
+	if logEntry.Timestamp.IsZero() {
+		// Entries with a missing/unparseable timestamp would be indexed with a
+		// nonsense value (zero time overflows UnixNano) and never match the
+		// live-tail date-range windows. Fall back to ingestion time.
+		logEntry.Timestamp = time.Now()
+	}
 
 	id, err := ulid.New(logEntry.Timestamp)
 	if err != nil {
@@ -78,6 +85,10 @@ func (s *Bluger) Process(_ context.Context, entry *domain.Entry) error {
 	if err := addFields(doc, "", logEntry.Fields); err != nil {
 		return err
 	}
+
+	// Aggregate every field into the default "_all" search field so
+	// unfielded queries (e.g. "timeout") match any field content.
+	doc.AddField(bluge.NewCompositeFieldExcluding("_all", []string{FieldID}))
 
 	b := index.NewBatch()
 	b.Insert(doc)
@@ -124,17 +135,14 @@ func addFields(doc *bluge.Document, prefix string, fields orderedmap.OrderedMap)
 			ff.FieldOptions = fieldOptions()
 			field = ff
 		case int:
-			ff := bluge.NewNumericField(key, float64(vv))
-			ff.FieldOptions = fieldOptions()
-			field = ff
+			addNumericField(doc, key, float64(vv))
+			continue
 		case int64:
-			ff := bluge.NewNumericField(key, float64(vv))
-			ff.FieldOptions = fieldOptions()
-			field = ff
+			addNumericField(doc, key, float64(vv))
+			continue
 		case float64:
-			ff := bluge.NewNumericField(key, vv)
-			ff.FieldOptions = fieldOptions()
-			field = ff
+			addNumericField(doc, key, vv)
+			continue
 		case bool:
 			ff := bluge.NewTextField(key, strconv.FormatBool(vv))
 			ff.FieldOptions = fieldOptions()
@@ -146,6 +154,16 @@ func addFields(doc *bluge.Document, prefix string, fields orderedmap.OrderedMap)
 		doc.AddField(field)
 	}
 	return nil
+}
+
+// addNumericField indexes a numeric value for range queries/sorting while
+// storing a human-readable text twin: bluge stores numeric values as
+// prefix-coded bytes, which would reach clients as garbage strings.
+func addNumericField(doc *bluge.Document, key string, value float64) {
+	ff := bluge.NewNumericField(key, value)
+	ff.FieldOptions = bluge.Index | bluge.Sortable | bluge.Aggregatable
+	doc.AddField(ff)
+	doc.AddField(bluge.NewStoredOnlyField(key, []byte(strconv.FormatFloat(value, 'f', -1, 64))))
 }
 
 func (s *Bluger) EntriesCount() int64 {
