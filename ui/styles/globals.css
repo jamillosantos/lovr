@@ -169,8 +169,8 @@
 	}
 
 	/* Connection status */
-	.status-indicator {
-		@apply flex items-center gap-1.5 text-muted-foreground text-xs;
+	.status-button {
+		@apply text-muted-foreground text-xs;
 	}
 	.status-dot {
 		@apply inline-block size-2 rounded-full;

@@ -1,4 +1,4 @@
-import { AlertCircle, Pause, Play, Trash2 } from "lucide-react";
+import { AlertCircle, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { ColumnSelector } from "@/components/ColumnSelector.tsx";
 import { ConnectionStatus } from "@/components/ConnectionStatus.tsx";
@@ -8,7 +8,6 @@ import { SearchBar } from "@/components/SearchBar.tsx";
 import { ThemeToggle } from "@/components/ThemeToggle.tsx";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import type { Entry, Field } from "@/domain/models.ts";
 import { useLiveEntries } from "@/hooks/useLiveEntries.ts";
 import {
@@ -116,11 +115,6 @@ export function App() {
 					onSubmit={() => runQuery(queryInput)}
 				/>
 
-				<Button variant="outline" size="sm" onClick={() => setPaused(!paused)}>
-					{paused ? <Play /> : <Pause />}
-					{paused ? "Resume" : "Pause"}
-				</Button>
-
 				<Button variant="outline" size="sm" onClick={clear}>
 					<Trash2 />
 					Clear
@@ -128,12 +122,11 @@ export function App() {
 
 				<ColumnSelector columns={columns} onChange={changeColumns} />
 
-				<Separator orientation="vertical" className="h-5!" />
-
 				<ConnectionStatus
 					connection={connection}
-					paused={paused}
 					count={entries.length}
+					onToggle={() => setPaused(!paused)}
+					paused={paused}
 				/>
 
 				<ThemeToggle />
