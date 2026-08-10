@@ -38,6 +38,56 @@ export async function searchEntries(
 	return body.entries ?? [];
 }
 
+export interface HistogramBucket {
+	start: string;
+	counts: Record<string, number>;
+}
+
+export interface HistogramResponse {
+	start: string;
+	end: string;
+	bucketMs: number;
+	groups: string[] | null;
+	buckets: HistogramBucket[] | null;
+}
+
+export interface HistogramParams {
+	q?: string;
+	since?: string;
+	until?: string;
+	buckets?: number;
+	groupBy?: string;
+}
+
+export async function fetchHistogram(
+	{ q, since, until, buckets, groupBy }: HistogramParams,
+	signal?: AbortSignal,
+): Promise<HistogramResponse> {
+	const params = new URLSearchParams();
+	if (q) {
+		params.set("q", q);
+	}
+	if (since) {
+		params.set("since", since);
+	}
+	if (until) {
+		params.set("until", until);
+	}
+	if (buckets) {
+		params.set("buckets", String(buckets));
+	}
+	if (groupBy) {
+		params.set("groupBy", groupBy);
+	}
+	const res = await fetch(`${API_BASE}/entries/histogram?${params}`, {
+		signal,
+	});
+	if (!res.ok) {
+		throw new Error(`histogram failed: ${res.status}`);
+	}
+	return res.json();
+}
+
 export async function fetchFields(signal?: AbortSignal): Promise<string[]> {
 	const res = await fetch(`${API_BASE}/entries/fields`, { signal });
 	if (!res.ok) {

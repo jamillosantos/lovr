@@ -32,6 +32,20 @@
 	--level-fatal: oklch(0.505 0.213 27.518);
 	--level-panic: oklch(0.505 0.213 27.518);
 
+	/* Chart palettes — validated with the dataviz six-checks script against
+	 * this mode's surface; keep hue families aligned with the level colors. */
+	--chart-level-debug: #3f77c9;
+	--chart-level-info: #047857;
+	--chart-level-warning: #f59e0b;
+	--chart-level-error: #e7000b;
+	--chart-level-fatal: #991b1b;
+	--chart-cat-0: #2563eb;
+	--chart-cat-1: #b45309;
+	--chart-cat-2: #047857;
+	--chart-cat-3: #7c3aed;
+	--chart-cat-4: #c2410c;
+	--chart-cat-5: #0d9488;
+
 	--syntax-key: oklch(0.5 0.16 240);
 	--syntax-phrase: oklch(0.52 0.13 150);
 	--syntax-operator: oklch(0.5 0.2 300);
@@ -70,6 +84,18 @@
 	--level-error: oklch(0.704 0.191 22.216);
 	--level-fatal: oklch(0.637 0.237 25.331);
 	--level-panic: oklch(0.637 0.237 25.331);
+
+	--chart-level-debug: #3b82f6;
+	--chart-level-info: #059669;
+	--chart-level-warning: #b45309;
+	--chart-level-error: #f43f5e;
+	--chart-level-fatal: #a53535;
+	--chart-cat-0: #3b82f6;
+	--chart-cat-1: #c8790a;
+	--chart-cat-2: #0e9f6e;
+	--chart-cat-3: #8b5cf6;
+	--chart-cat-4: #d95f28;
+	--chart-cat-5: #0d9488;
 
 	--syntax-key: oklch(0.75 0.13 240);
 	--syntax-phrase: oklch(0.78 0.14 150);
@@ -191,6 +217,53 @@
 		@apply text-muted-foreground text-xs;
 	}
 
+	/* Histogram */
+	.histogram {
+		@apply border-b px-3 pt-2;
+	}
+	.histogram-chart {
+		@apply relative;
+	}
+	.histogram-svg {
+		@apply block;
+	}
+	.histogram-empty {
+		@apply flex h-24 items-center justify-center text-muted-foreground text-xs;
+	}
+	.histogram-hover-band {
+		@apply fill-muted/60;
+	}
+	.histogram-tooltip {
+		@apply pointer-events-none absolute top-2 z-40 w-44 rounded-md border bg-popover p-2 text-popover-foreground shadow-md;
+	}
+	.histogram-tooltip-time {
+		@apply mb-1 font-medium font-mono text-xs;
+	}
+	.histogram-tooltip-row {
+		@apply flex items-center gap-1.5 font-mono text-xs;
+	}
+	.histogram-tooltip-label {
+		@apply flex-1 text-muted-foreground;
+	}
+	.histogram-tooltip-count {
+		@apply tabular-nums;
+	}
+	.histogram-swatch {
+		@apply inline-block size-2.5 rounded-xs;
+	}
+	.histogram-footer {
+		@apply flex items-center gap-3 py-0.5;
+	}
+	.histogram-axis {
+		@apply font-mono text-[10px] text-muted-foreground;
+	}
+	.histogram-legend {
+		@apply flex flex-1 flex-wrap justify-center gap-3;
+	}
+	.histogram-legend-item {
+		@apply flex items-center gap-1.5 text-muted-foreground text-xs;
+	}
+
 	/* Time filter */
 	.time-filter-presets {
 		@apply flex w-36 flex-col gap-0.5;
@@ -261,7 +334,7 @@
 		@apply w-16 shrink-0;
 	}
 	.log-row-time {
-		@apply w-[12ch] shrink-0 text-muted-foreground tabular-nums;
+		@apply w-[18ch] shrink-0 text-muted-foreground tabular-nums;
 	}
 	.log-row-message {
 		@apply flex-1 truncate;

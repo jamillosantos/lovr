@@ -19,12 +19,14 @@ import {
 } from "@/lib/timerange.ts";
 
 export const DEFAULT_COLUMNS = ["timestamp", "level", "message"];
+export const DEFAULT_GROUP_BY = "level";
 
 // The application state persisted in the URL.
 export interface URLState {
 	q: string;
 	cols: string[];
 	range: TimeRange;
+	groupBy: string;
 }
 
 export function stateFromSearch(search: string): URLState {
@@ -34,6 +36,7 @@ export function stateFromSearch(search: string): URLState {
 		q: params.get("q") ?? "",
 		cols: cols ? cols.split(",").filter(Boolean) : [...DEFAULT_COLUMNS],
 		range: rangeFromParams(params),
+		groupBy: params.get("groupBy") ?? DEFAULT_GROUP_BY,
 	};
 }
 
@@ -49,6 +52,9 @@ export function stateURL(pathname: string, state: URLState): string {
 		params.set("cols", state.cols.join(","));
 	}
 	rangeToParams(state.range, params);
+	if (state.groupBy !== DEFAULT_GROUP_BY) {
+		params.set("groupBy", state.groupBy);
+	}
 	const encoded = params.toString();
 	return encoded ? `${pathname}?${encoded}` : pathname;
 }

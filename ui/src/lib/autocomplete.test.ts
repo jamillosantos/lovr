@@ -108,6 +108,7 @@ describe("stateFromSearch", () => {
 			q: "level:error timeout",
 			cols: DEFAULT_COLUMNS,
 			range: null,
+			groupBy: "level",
 		});
 	});
 	test("reads cols", () => {
@@ -115,6 +116,7 @@ describe("stateFromSearch", () => {
 			q: "",
 			cols: ["timestamp", "level", "message", "service"],
 			range: null,
+			groupBy: "level",
 		});
 	});
 	test("reads the time range", () => {
@@ -125,6 +127,7 @@ describe("stateFromSearch", () => {
 			q: "",
 			cols: DEFAULT_COLUMNS,
 			range: null,
+			groupBy: "level",
 		});
 	});
 });
@@ -136,12 +139,18 @@ describe("stateURL", () => {
 				q: 'msg:"a b"',
 				cols: [...DEFAULT_COLUMNS],
 				range: null,
+				groupBy: "level",
 			}),
 		).toBe("/?q=msg%3A%22a+b%22");
 	});
 	test("drops all parameters at defaults", () => {
 		expect(
-			stateURL("/", { q: "  ", cols: [...DEFAULT_COLUMNS], range: null }),
+			stateURL("/", {
+				q: "  ",
+				cols: [...DEFAULT_COLUMNS],
+				range: null,
+				groupBy: "level",
+			}),
 		).toBe("/");
 	});
 	test("persists custom cols", () => {
@@ -150,6 +159,7 @@ describe("stateURL", () => {
 				q: "",
 				cols: ["timestamp", "message", "service"],
 				range: null,
+				groupBy: "level",
 			}),
 		).toBe("/?cols=timestamp%2Cmessage%2Cservice");
 	});
@@ -158,6 +168,7 @@ describe("stateURL", () => {
 			q: 'level:error msg:"failed to process" -service:billing',
 			cols: ["timestamp", "level", "message", "status"],
 			range: { preset: "24h" },
+			groupBy: "service",
 		};
 		expect(stateFromSearch(stateURL("/", state).slice(1))).toEqual(state);
 	});

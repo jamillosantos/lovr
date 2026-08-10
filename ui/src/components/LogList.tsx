@@ -25,7 +25,7 @@ function Cell({ column, entry }: { column: string; entry: Entry }) {
 		case "timestamp":
 			return (
 				<time className="log-row-time">
-					{format(new Date(entry.timestamp), "HH:mm:ss.SSS")}
+					{format(new Date(entry.timestamp), "MM-dd HH:mm:ss.SSS")}
 				</time>
 			);
 		case "level":

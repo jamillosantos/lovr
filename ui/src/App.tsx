@@ -2,6 +2,7 @@ import { AlertCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { ColumnSelector } from "@/components/ColumnSelector.tsx";
 import { ConnectionStatus } from "@/components/ConnectionStatus.tsx";
+import { Histogram } from "@/components/Histogram.tsx";
 import { LogDetail, type SearchAction } from "@/components/LogDetail.tsx";
 import { LogList } from "@/components/LogList.tsx";
 import { SearchBar } from "@/components/SearchBar.tsx";
@@ -28,6 +29,7 @@ export function App() {
 	const [query, setQuery] = useState(initialState.q);
 	const [columns, setColumns] = useState(initialState.cols);
 	const [range, setRange] = useState<TimeRange>(initialState.range);
+	const [groupBy, setGroupBy] = useState(initialState.groupBy);
 	const [refresh, setRefresh] = useState(0);
 	const [selected, setSelected] = useState<Entry | undefined>();
 
@@ -49,19 +51,24 @@ export function App() {
 		// Bumping the nonce restarts the stream even for an unchanged query.
 		setRefresh((r) => r + 1);
 		if (pushHistory) {
-			syncURL({ q, cols: columns, range }, true);
+			syncURL({ q, cols: columns, range, groupBy }, true);
 		}
 	};
 
 	const changeColumns = (cols: string[]) => {
 		setColumns(cols);
-		syncURL({ q: query, cols, range }, false);
+		syncURL({ q: query, cols, range, groupBy }, false);
 	};
 
 	const changeRange = (next: TimeRange) => {
 		setRange(next);
 		// The stream restarts via the range key; persist as navigation.
-		syncURL({ q: query, cols: columns, range: next }, true);
+		syncURL({ q: query, cols: columns, range: next, groupBy }, true);
+	};
+
+	const changeGroupBy = (next: string) => {
+		setGroupBy(next);
+		syncURL({ q: query, cols: columns, range, groupBy: next }, false);
 	};
 
 	// Restore the state when navigating browser history.
@@ -71,6 +78,7 @@ export function App() {
 			setQueryInput(state.q);
 			setColumns(state.cols);
 			setRange(state.range);
+			setGroupBy(state.groupBy);
 			runQuery(state.q, false);
 		};
 		window.addEventListener("popstate", onPopState);
@@ -142,6 +150,15 @@ export function App() {
 
 				<ThemeToggle />
 			</header>
+
+			<Histogram
+				groupBy={groupBy}
+				onGroupByChange={changeGroupBy}
+				paused={paused}
+				query={query}
+				range={range}
+				refresh={refresh}
+			/>
 
 			{error && (
 				<Alert variant="destructive" className="error-banner">
