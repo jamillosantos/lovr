@@ -12,16 +12,34 @@ export function appendTerm(query: string, term: string): string {
 	return trimmed ? `${trimmed} ${term}` : term;
 }
 
-// Extracts the search query from a location search string (?q=...).
-export function queryFromSearch(search: string): string {
-	return new URLSearchParams(search).get("q") ?? "";
+export const DEFAULT_COLUMNS = ["timestamp", "level", "message"];
+
+// The application state persisted in the URL.
+export interface URLState {
+	q: string;
+	cols: string[];
 }
 
-// Builds the URL that persists a query, dropping the parameter when empty.
-export function searchURL(pathname: string, query: string): string {
-	const trimmed = query.trim();
-	if (!trimmed) {
-		return pathname;
+export function stateFromSearch(search: string): URLState {
+	const params = new URLSearchParams(search);
+	const cols = params.get("cols");
+	return {
+		q: params.get("q") ?? "",
+		cols: cols ? cols.split(",").filter(Boolean) : [...DEFAULT_COLUMNS],
+	};
+}
+
+// Builds the URL that persists the state, dropping parameters at their
+// defaults.
+export function stateURL(pathname: string, state: URLState): string {
+	const params = new URLSearchParams();
+	const q = state.q.trim();
+	if (q) {
+		params.set("q", q);
 	}
-	return `${pathname}?${new URLSearchParams({ q: trimmed })}`;
+	if (state.cols.join(",") !== DEFAULT_COLUMNS.join(",")) {
+		params.set("cols", state.cols.join(","));
+	}
+	const encoded = params.toString();
+	return encoded ? `${pathname}?${encoded}` : pathname;
 }

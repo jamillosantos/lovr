@@ -1,5 +1,6 @@
 import { Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { SearchHelp } from "@/components/SearchHelp.tsx";
 import { Input } from "@/components/ui/input";
 import { fetchFields, fetchFieldValues } from "@/lib/api.ts";
 import { lastToken, replaceLastToken, splitToken } from "@/lib/autocomplete.ts";
@@ -151,6 +152,7 @@ export function SearchBar({
 						}
 					}}
 				/>
+				<SearchHelp />
 				{open && (
 					<ul className="search-suggestions">
 						{suggestions.map((suggestion, index) => (

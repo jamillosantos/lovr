@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { lastToken, replaceLastToken, splitToken } from "./autocomplete.ts";
-import { appendTerm, fieldTerm, queryFromSearch, searchURL } from "./query.ts";
+import {
+	appendTerm,
+	DEFAULT_COLUMNS,
+	fieldTerm,
+	stateFromSearch,
+	stateURL,
+} from "./query.ts";
 
 describe("lastToken", () => {
 	test("empty input", () => {
@@ -96,26 +102,43 @@ describe("appendTerm", () => {
 	});
 });
 
-describe("queryFromSearch", () => {
-	test("reads q", () => {
-		expect(queryFromSearch("?q=level%3Aerror+timeout")).toBe(
-			"level:error timeout",
-		);
+describe("stateFromSearch", () => {
+	test("reads q and defaults cols", () => {
+		expect(stateFromSearch("?q=level%3Aerror+timeout")).toEqual({
+			q: "level:error timeout",
+			cols: DEFAULT_COLUMNS,
+		});
+	});
+	test("reads cols", () => {
+		expect(stateFromSearch("?cols=timestamp,level,message,service")).toEqual({
+			q: "",
+			cols: ["timestamp", "level", "message", "service"],
+		});
 	});
 	test("empty when missing", () => {
-		expect(queryFromSearch("")).toBe("");
+		expect(stateFromSearch("")).toEqual({ q: "", cols: DEFAULT_COLUMNS });
 	});
 });
 
-describe("searchURL", () => {
-	test("encodes the query", () => {
-		expect(searchURL("/", 'msg:"a b"')).toBe("/?q=msg%3A%22a+b%22");
+describe("stateURL", () => {
+	test("encodes the query and drops default cols", () => {
+		expect(stateURL("/", { q: 'msg:"a b"', cols: [...DEFAULT_COLUMNS] })).toBe(
+			"/?q=msg%3A%22a+b%22",
+		);
 	});
-	test("drops the parameter when empty", () => {
-		expect(searchURL("/", "  ")).toBe("/");
+	test("drops all parameters at defaults", () => {
+		expect(stateURL("/", { q: "  ", cols: [...DEFAULT_COLUMNS] })).toBe("/");
+	});
+	test("persists custom cols", () => {
+		expect(
+			stateURL("/", { q: "", cols: ["timestamp", "message", "service"] }),
+		).toBe("/?cols=timestamp%2Cmessage%2Cservice");
 	});
 	test("round-trips", () => {
-		const q = 'level:error msg:"failed to process" -service:billing';
-		expect(queryFromSearch(searchURL("/", q).slice(1))).toBe(q);
+		const state = {
+			q: 'level:error msg:"failed to process" -service:billing',
+			cols: ["timestamp", "level", "message", "status"],
+		};
+		expect(stateFromSearch(stateURL("/", state).slice(1))).toEqual(state);
 	});
 });
