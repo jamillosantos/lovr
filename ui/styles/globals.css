@@ -302,7 +302,7 @@
 	@apply h-10 pr-10 pl-9 font-mono text-sm;
 }
 .column-selector {
-	@apply max-h-96 overflow-y-auto;
+	@apply flex max-h-[70vh] w-64 flex-col overflow-y-auto p-2;
 }
 .column-selector-filter {
 	@apply relative px-1 py-1;
@@ -310,8 +310,29 @@
 .column-selector-filter .field-filter-icon {
 	@apply left-3.5;
 }
+.column-selector-separator {
+	@apply my-2;
+}
 .column-selector-empty {
-	@apply font-normal text-muted-foreground;
+	@apply px-2 py-1 text-muted-foreground text-xs;
+}
+.column-section-title {
+	@apply px-1 pb-1 font-medium text-muted-foreground text-xs;
+}
+.column-available-list {
+	@apply min-h-0 flex-1 overflow-y-auto;
+}
+.column-row {
+	@apply flex items-center gap-2 rounded-sm bg-popover px-1 py-1 text-sm;
+}
+.column-row-label {
+	@apply flex-1 cursor-pointer font-mono text-xs;
+}
+.column-drag {
+	@apply cursor-grab text-muted-foreground hover:text-foreground [&_svg]:size-3.5;
+}
+.column-drag-spacer {
+	@apply w-3.5;
 }
 .search-help {
 	@apply w-[30rem] max-w-[90vw];

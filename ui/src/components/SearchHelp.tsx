@@ -16,8 +16,11 @@ const examples: [string, string][] = [
 	["message:*onnect*", "wildcards match inside words"],
 	["_exists_:user_id", "entries having a key (alias for user_id:*)"],
 	["level:error OR level:fatal", "OR combines alternatives (uppercase)"],
-	["(level:error OR level:fatal) service:billing", "parentheses group for precedence"],
-	['level:(error OR fatal)', 'value lists match any item ("in")'],
+	[
+		"(level:error OR level:fatal) service:billing",
+		"parentheses group for precedence",
+	],
+	["level:(error OR fatal)", 'value lists match any item ("in")'],
 ];
 
 export function SearchHelp() {
