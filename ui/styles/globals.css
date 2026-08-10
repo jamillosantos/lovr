@@ -31,6 +31,16 @@
 	--level-error: oklch(0.577 0.245 27.325);
 	--level-fatal: oklch(0.505 0.213 27.518);
 	--level-panic: oklch(0.505 0.213 27.518);
+
+	--syntax-key: oklch(0.5 0.16 240);
+	--syntax-phrase: oklch(0.52 0.13 150);
+	--syntax-operator: oklch(0.5 0.2 300);
+	--syntax-modifier: oklch(0.55 0.22 25);
+	--syntax-paren-0: oklch(0.6 0.16 85);
+	--syntax-paren-1: oklch(0.55 0.2 330);
+	--syntax-paren-2: oklch(0.55 0.14 210);
+	--syntax-paren-3: oklch(0.6 0.17 55);
+	--syntax-paren-4: oklch(0.55 0.15 150);
 }
 
 .dark {
@@ -60,6 +70,16 @@
 	--level-error: oklch(0.704 0.191 22.216);
 	--level-fatal: oklch(0.637 0.237 25.331);
 	--level-panic: oklch(0.637 0.237 25.331);
+
+	--syntax-key: oklch(0.75 0.13 240);
+	--syntax-phrase: oklch(0.78 0.14 150);
+	--syntax-operator: oklch(0.75 0.16 300);
+	--syntax-modifier: oklch(0.72 0.18 25);
+	--syntax-paren-0: oklch(0.82 0.15 85);
+	--syntax-paren-1: oklch(0.75 0.17 330);
+	--syntax-paren-2: oklch(0.78 0.12 210);
+	--syntax-paren-3: oklch(0.78 0.15 55);
+	--syntax-paren-4: oklch(0.78 0.14 150);
 }
 
 @theme inline {
@@ -151,6 +171,9 @@
 	}
 	.search-help-trigger {
 		@apply -translate-y-1/2 absolute top-1/2 right-1.5 text-muted-foreground;
+	}
+	.search-clear {
+		@apply -translate-y-1/2 absolute top-1/2 right-9 text-muted-foreground;
 	}
 	.search-help-title {
 		@apply mb-2 font-medium text-sm;
@@ -308,7 +331,58 @@
  * any @layer components rule regardless of specificity. Unlayered CSS wins
  * over every layer, keeping these overrides effective. */
 .search-field-input {
-	@apply h-10 pr-10 pl-9 font-mono text-sm;
+	@apply h-10 pr-18 pl-9 font-mono text-sm;
+}
+.search-field-input-highlighted {
+	/* The overlay renders the colored text; the input keeps only the caret
+	 * (and selection) visible. */
+	@apply relative bg-transparent text-transparent caret-foreground;
+}
+.search-highlight {
+	@apply pointer-events-none absolute inset-0 flex items-center overflow-hidden whitespace-pre rounded-md border border-transparent pr-18 pl-9 font-mono text-sm;
+}
+.tok-key {
+	color: var(--syntax-key);
+}
+.tok-colon,
+.tok-ws {
+	@apply text-muted-foreground;
+}
+.tok-value {
+	@apply text-foreground;
+}
+.tok-phrase {
+	color: var(--syntax-phrase);
+}
+.tok-operator {
+	color: var(--syntax-operator);
+	font-weight: 600;
+}
+.tok-modifier {
+	color: var(--syntax-modifier);
+	font-weight: 600;
+}
+.tok-paren-0 {
+	color: var(--syntax-paren-0);
+}
+.tok-paren-1 {
+	color: var(--syntax-paren-1);
+}
+.tok-paren-2 {
+	color: var(--syntax-paren-2);
+}
+.tok-paren-3 {
+	color: var(--syntax-paren-3);
+}
+.tok-paren-4 {
+	color: var(--syntax-paren-4);
+}
+.tok-paren-active {
+	@apply rounded-xs bg-accent font-bold;
+	outline: 1px solid var(--ring);
+}
+.tok-term-active {
+	@apply rounded-xs bg-accent/60;
 }
 .column-selector {
 	@apply flex max-h-[70vh] w-64 flex-col overflow-y-auto p-2;

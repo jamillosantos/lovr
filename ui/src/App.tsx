@@ -1,4 +1,4 @@
-import { AlertCircle, Trash2 } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { ColumnSelector } from "@/components/ColumnSelector.tsx";
 import { ConnectionStatus } from "@/components/ConnectionStatus.tsx";
@@ -93,7 +93,6 @@ export function App() {
 		error,
 		paused,
 		setPaused,
-		clear,
 		loadOlder,
 		loadingOlder,
 		exhausted,
@@ -112,13 +111,12 @@ export function App() {
 				<SearchBar
 					value={queryInput}
 					onChange={setQueryInput}
+					onClear={() => {
+						setQueryInput("");
+						runQuery("");
+					}}
 					onSubmit={() => runQuery(queryInput)}
 				/>
-
-				<Button variant="outline" size="sm" onClick={clear}>
-					<Trash2 />
-					Clear
-				</Button>
 
 				<ColumnSelector columns={columns} onChange={changeColumns} />
 
