@@ -6,6 +6,20 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Entry } from "@/domain/models.ts";
 import { cn } from "@/lib/utils";
 
+// columnClass gives each column its width so header and row cells align.
+function columnClass(column: string): string {
+	switch (column) {
+		case "timestamp":
+			return "log-row-time";
+		case "level":
+			return "log-col-level";
+		case "message":
+			return "log-row-message";
+		default:
+			return "log-row-field";
+	}
+}
+
 function Cell({ column, entry }: { column: string; entry: Entry }) {
 	switch (column) {
 		case "timestamp":
@@ -79,28 +93,37 @@ export function LogList({
 	}
 
 	return (
-		<ScrollArea className="log-scroll">
-			<ul className="log-list">
-				{entries.map((entry) => (
-					<li key={entry.$id}>
-						<button
-							className={cn(
-								"log-row",
-								entry.$id === selectedID && "log-row-selected",
-							)}
-							onClick={() => onSelect(entry)}
-						>
-							{columns.map((column) => (
-								<Cell column={column} entry={entry} key={column} />
-							))}
-						</button>
-					</li>
+		<div className="log-container">
+			<div className="log-header">
+				{columns.map((column) => (
+					<span className={columnClass(column)} key={column}>
+						{column}
+					</span>
 				))}
-			</ul>
-			<div className="log-list-footer" ref={sentinelRef}>
-				{loadingOlder && <Loader2 className="log-list-spinner" />}
-				{exhausted && <span>End of results</span>}
 			</div>
-		</ScrollArea>
+			<ScrollArea className="log-scroll">
+				<ul className="log-list">
+					{entries.map((entry) => (
+						<li key={entry.$id}>
+							<button
+								className={cn(
+									"log-row",
+									entry.$id === selectedID && "log-row-selected",
+								)}
+								onClick={() => onSelect(entry)}
+							>
+								{columns.map((column) => (
+									<Cell column={column} entry={entry} key={column} />
+								))}
+							</button>
+						</li>
+					))}
+				</ul>
+				<div className="log-list-footer" ref={sentinelRef}>
+					{loadingOlder && <Loader2 className="log-list-spinner" />}
+					{exhausted && <span>End of results</span>}
+				</div>
+			</ScrollArea>
+		</div>
 	);
 }

@@ -205,8 +205,17 @@
 	.log-row-selected {
 		@apply bg-muted;
 	}
+	.log-container {
+		@apply flex min-h-0 flex-1 flex-col;
+	}
+	.log-header {
+		@apply flex items-center gap-3 border-b px-3 py-1.5 font-mono text-[10px] text-muted-foreground uppercase tracking-wide;
+	}
+	.log-col-level {
+		@apply w-16 shrink-0;
+	}
 	.log-row-time {
-		@apply shrink-0 text-muted-foreground tabular-nums;
+		@apply w-[12ch] shrink-0 text-muted-foreground tabular-nums;
 	}
 	.log-row-message {
 		@apply flex-1 truncate;
