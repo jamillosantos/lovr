@@ -94,6 +94,26 @@ describe("tokenizeForHighlight", () => {
 		expect([...activeTermIndexes(tokens, 3)]).toEqual([2]);
 	});
 
+	test("caret in a key highlights its whole value list", () => {
+		// tokens: key colon ( error ws OR ws fatal ) ws value(x)
+		const q = "level:(error OR fatal) x";
+		const tokens = tokenizeForHighlight(q);
+		const expected = [2, 3, 4, 5, 6, 7, 8];
+		// Caret inside "level".
+		expect([...activeTermIndexes(tokens, 3)].sort((a, b) => a - b)).toEqual(
+			expected,
+		);
+		// Caret inside "fatal" (within the list) lights the same span.
+		expect([...activeTermIndexes(tokens, 18)].sort((a, b) => a - b)).toEqual(
+			expected,
+		);
+	});
+
+	test("caret in a grouping paren without a key highlights nothing", () => {
+		const tokens = tokenizeForHighlight("(a OR b)");
+		expect([...activeTermIndexes(tokens, 2)]).toEqual([]);
+	});
+
 	test("round-trips text", () => {
 		const q = ' (level:(error OR fatal)  -msg:"x y")  status:>499 ';
 		expect(

@@ -64,13 +64,39 @@ export function matchParen(
 }
 
 // activeTermIndexes returns the indexes of the VALUE tokens of the key:value
-// term the caret is in, so the value lights up while editing the key. Empty
-// when the caret is not inside a fielded term.
+// term the caret is in, so the value lights up while editing the key. For
+// value lists (key:(a OR b)) the whole parenthesized span lights up, whether
+// the caret is on the key or inside the list. Empty when the caret is not
+// inside a fielded term.
 export function activeTermIndexes(
 	tokens: HighlightToken[],
 	caret: number,
 ): Set<number> {
 	const partTypes = new Set(["modifier", "key", "colon", "value", "phrase"]);
+	const isParen = (i: number) =>
+		i >= 0 &&
+		i < tokens.length &&
+		(tokens[i] as HighlightToken).type.startsWith("paren-");
+	const parenChar = (i: number) => (tokens[i] as HighlightToken).text;
+
+	// closeOf finds the index of the matching ")" for an "(" token.
+	const closeOf = (open: number): number => {
+		let depth = 0;
+		for (let i = open; i < tokens.length; i++) {
+			if (!isParen(i)) {
+				continue;
+			}
+			if (parenChar(i) === "(") {
+				depth++;
+			} else {
+				depth--;
+				if (depth === 0) {
+					return i;
+				}
+			}
+		}
+		return -1;
+	};
 
 	let offset = 0;
 	let at = -1;
@@ -87,18 +113,70 @@ export function activeTermIndexes(
 		}
 		offset = end;
 	}
+
+	// enclosingList walks up the parens around tokenAt looking for an opener
+	// preceded by key+colon; the whole balanced span is the highlight.
+	const enclosingList = (tokenAt: number): Set<number> => {
+		let open = -1;
+		let depth = 0;
+		for (let i = tokenAt; i >= 0; i--) {
+			if (!isParen(i)) {
+				continue;
+			}
+			if (parenChar(i) === ")" && i !== tokenAt) {
+				depth++;
+			} else if (parenChar(i) === "(") {
+				if (depth === 0) {
+					open = i;
+					if (i > 0 && (tokens[i - 1] as HighlightToken).type === "colon") {
+						break;
+					}
+				} else {
+					depth--;
+				}
+			}
+		}
+		if (open <= 0 || (tokens[open - 1] as HighlightToken).type !== "colon") {
+			return new Set();
+		}
+		const close = closeOf(open);
+		if (close < 0) {
+			return new Set();
+		}
+		const span = new Set<number>();
+		for (let i = open; i <= close; i++) {
+			span.add(i);
+		}
+		return span;
+	};
+
 	if (at < 0) {
-		return new Set();
+		// The caret is not on a term token (e.g. on a paren or whitespace):
+		// it may still be inside a value list.
+		let offset2 = 0;
+		let tokenAt = -1;
+		for (let i = 0; i < tokens.length; i++) {
+			const token = tokens[i] as HighlightToken;
+			const tokenEnd = offset2 + token.text.length;
+			if (caret >= offset2 && caret <= tokenEnd) {
+				tokenAt = i;
+				if (caret < tokenEnd) {
+					break;
+				}
+			}
+			offset2 = tokenEnd;
+		}
+		return tokenAt < 0 ? new Set() : enclosingList(tokenAt);
 	}
 
 	let start = at;
+	let end = at;
 	while (
 		start > 0 &&
 		partTypes.has((tokens[start - 1] as HighlightToken).type)
 	) {
 		start--;
 	}
-	let end = at;
 	while (
 		end < tokens.length - 1 &&
 		partTypes.has((tokens[end + 1] as HighlightToken).type)
@@ -117,7 +195,26 @@ export function activeTermIndexes(
 			hasKey = true;
 		}
 	}
-	return hasKey ? group : new Set();
+	if (!hasKey) {
+		// A bare word: it may be a member of a value list (key:(a OR b)).
+		return enclosingList(at);
+	}
+
+	// A value list directly after the term (key:(a OR b)): light the whole
+	// parenthesized span.
+	if (
+		(tokens[end] as HighlightToken).type === "colon" &&
+		isParen(end + 1) &&
+		parenChar(end + 1) === "("
+	) {
+		const close = closeOf(end + 1);
+		if (close > 0) {
+			for (let i = end + 1; i <= close; i++) {
+				group.add(i);
+			}
+		}
+	}
+	return group;
 }
 
 function insideQuotes(input: string, index: number): boolean {
