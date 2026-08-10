@@ -53,11 +53,9 @@ func (r *Reader) Search(ctx context.Context, req SearchRequest) (SearchResponse,
 			until = time.Date(2200, 1, 1, 0, 0, 0, 0, time.UTC)
 		}
 		inclusive := true
-		exclusive := false
-		// The lower bound is inclusive: entries sharing the boundary
-		// timestamp may be indexed after a poll read it, and consumers
-		// deduplicate by entry ID.
-		dr := bleve.NewDateRangeInclusiveQuery(req.Since, until, &inclusive, &exclusive)
+		// Both bounds are inclusive: entries sharing a boundary timestamp
+		// must not be lost when paging (consumers deduplicate by entry ID).
+		dr := bleve.NewDateRangeInclusiveQuery(req.Since, until, &inclusive, &inclusive)
 		dr.SetField(processors.FieldTimestamp)
 		qs = append(qs, dr)
 	}

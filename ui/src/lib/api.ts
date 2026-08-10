@@ -1,8 +1,37 @@
 import { API_BASE } from "@/config.ts";
+import type { Entry } from "@/domain/models.ts";
 
 export interface FieldValue {
 	value: string;
 	count: number;
+}
+
+export interface SearchParams {
+	q?: string;
+	until?: string;
+	pageSize?: number;
+}
+
+export async function searchEntries(
+	{ q, until, pageSize }: SearchParams,
+	signal?: AbortSignal,
+): Promise<Entry[]> {
+	const params = new URLSearchParams();
+	if (q) {
+		params.set("q", q);
+	}
+	if (until) {
+		params.set("until", until);
+	}
+	if (pageSize) {
+		params.set("pageSize", String(pageSize));
+	}
+	const res = await fetch(`${API_BASE}/entries/search?${params}`, { signal });
+	if (!res.ok) {
+		throw new Error(`search failed: ${res.status}`);
+	}
+	const body: { entries: Entry[] | null } = await res.json();
+	return body.entries ?? [];
 }
 
 export async function fetchFields(signal?: AbortSignal): Promise<string[]> {

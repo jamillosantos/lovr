@@ -1,5 +1,6 @@
 import { AlertCircle, Pause, Play, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { ColumnSelector } from "@/components/ColumnSelector.tsx";
 import { ConnectionStatus } from "@/components/ConnectionStatus.tsx";
 import { LogDetail } from "@/components/LogDetail.tsx";
 import { LogList } from "@/components/LogList.tsx";
@@ -13,37 +14,54 @@ import { useLiveEntries } from "@/hooks/useLiveEntries.ts";
 import {
 	appendTerm,
 	fieldTerm,
-	queryFromSearch,
-	searchURL,
+	stateFromSearch,
+	stateURL,
 } from "@/lib/query.ts";
 
 export function App() {
-	const [queryInput, setQueryInput] = useState(() =>
-		queryFromSearch(window.location.search),
+	const [initialState] = useState(() =>
+		stateFromSearch(window.location.search),
 	);
-	const [query, setQuery] = useState(queryInput);
+	const [queryInput, setQueryInput] = useState(initialState.q);
+	const [query, setQuery] = useState(initialState.q);
+	const [columns, setColumns] = useState(initialState.cols);
 	const [refresh, setRefresh] = useState(0);
 	const [selected, setSelected] = useState<Entry | undefined>();
+
+	const syncURL = (q: string, cols: string[], push: boolean) => {
+		const url = stateURL(window.location.pathname, { q, cols });
+		const current = window.location.pathname + window.location.search;
+		if (url === current) {
+			return;
+		}
+		if (push) {
+			window.history.pushState(null, "", url);
+		} else {
+			window.history.replaceState(null, "", url);
+		}
+	};
 
 	const runQuery = (q: string, pushHistory = true) => {
 		setQuery(q);
 		// Bumping the nonce restarts the stream even for an unchanged query.
 		setRefresh((r) => r + 1);
 		if (pushHistory) {
-			const url = searchURL(window.location.pathname, q);
-			const current = window.location.pathname + window.location.search;
-			if (url !== current) {
-				window.history.pushState(null, "", url);
-			}
+			syncURL(q, columns, true);
 		}
 	};
 
-	// Restore the query when navigating browser history.
+	const changeColumns = (cols: string[]) => {
+		setColumns(cols);
+		syncURL(query, cols, false);
+	};
+
+	// Restore the state when navigating browser history.
 	useEffect(() => {
 		const onPopState = () => {
-			const q = queryFromSearch(window.location.search);
-			setQueryInput(q);
-			runQuery(q, false);
+			const state = stateFromSearch(window.location.search);
+			setQueryInput(state.q);
+			setColumns(state.cols);
+			runQuery(state.q, false);
 		};
 		window.addEventListener("popstate", onPopState);
 		return () => window.removeEventListener("popstate", onPopState);
@@ -55,8 +73,17 @@ export function App() {
 		runQuery(next);
 	};
 
-	const { entries, connection, error, paused, setPaused, clear } =
-		useLiveEntries(query, refresh);
+	const {
+		entries,
+		connection,
+		error,
+		paused,
+		setPaused,
+		clear,
+		loadOlder,
+		loadingOlder,
+		exhausted,
+	} = useLiveEntries(query, refresh);
 
 	const selectedEntry = useMemo(
 		() => entries.find((e) => e.$id === selected?.$id) ?? selected,
@@ -84,6 +111,8 @@ export function App() {
 					Clear
 				</Button>
 
+				<ColumnSelector columns={columns} onChange={changeColumns} />
+
 				<Separator orientation="vertical" className="h-5!" />
 
 				<ConnectionStatus
@@ -106,9 +135,13 @@ export function App() {
 
 			<main className="app-main">
 				<LogList
+					columns={columns}
 					entries={entries}
-					selectedID={selectedEntry?.$id}
+					exhausted={exhausted}
+					loadingOlder={loadingOlder}
+					onEndReached={paused ? undefined : loadOlder}
 					onSelect={setSelected}
+					selectedID={selectedEntry?.$id}
 				/>
 				{selectedEntry && (
 					<LogDetail

@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { wsURL } from "@/config.ts";
 import type { BatchEntries, Entry } from "@/domain/models.ts";
+import { searchEntries } from "@/lib/api.ts";
+import { mergeLive, mergeOlder } from "@/lib/entries.ts";
 
-const MAX_ENTRIES = 1000;
 const RECONNECT_DELAY_MS = 1000;
+const HISTORY_PAGE_SIZE = 100;
 
 export type ConnectionState = "connecting" | "connected" | "closed";
 
@@ -15,27 +17,43 @@ export interface LiveEntries {
 	paused: boolean;
 	setPaused: (paused: boolean) => void;
 	clear: () => void;
+	/** Fetches the next (older) history page. No-op while one is in flight. */
+	loadOlder: () => void;
+	loadingOlder: boolean;
+	/** True when the history has been fully paginated. */
+	exhausted: boolean;
 }
 
-// useLiveEntries keeps a websocket open against /entries/live, restarting the
-// stream whenever the query (or the refresh nonce) changes. Batches arrive
-// newest-first and are prepended to the list, deduplicated by entry id.
-// Pausing only freezes what is rendered — ingestion continues in the
-// background so no entries are lost.
+// useLiveEntries combines the websocket live tail (new entries, prepended)
+// with paginated history via the search endpoint (older entries, appended as
+// the user scrolls). Both sources deduplicate by entry id. The stream
+// restarts whenever the query (or the refresh nonce) changes. Pausing only
+// freezes what is rendered — ingestion continues in the background.
 export function useLiveEntries(query: string, refresh: number): LiveEntries {
 	const [entries, setEntries] = useState<Entry[]>([]);
 	const [frozen, setFrozen] = useState<Entry[] | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [connection, setConnection] = useState<ConnectionState>("connecting");
+	const [loadingOlder, setLoadingOlder] = useState(false);
+	const [exhausted, setExhausted] = useState(false);
+
+	const entriesRef = useRef(entries);
+	entriesRef.current = entries;
+	const loadingOlderRef = useRef(false);
+	const generationRef = useRef(0);
 
 	useEffect(() => {
 		let ws: WebSocket | null = null;
 		let closed = false;
 		let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
 
+		generationRef.current++;
 		setEntries([]);
 		setFrozen(null);
 		setError(null);
+		setExhausted(false);
+		loadingOlderRef.current = false;
+		setLoadingOlder(false);
 
 		let url: string;
 		try {
@@ -66,11 +84,7 @@ export function useLiveEntries(query: string, refresh: number): LiveEntries {
 				}
 				setError(null);
 				const incoming = batch.entries;
-				setEntries((current) => {
-					const seen = new Set(incoming.map((e) => e.$id));
-					const kept = current.filter((e) => !seen.has(e.$id));
-					return [...incoming, ...kept].slice(0, MAX_ENTRIES);
-				});
+				setEntries((current) => mergeLive(current, incoming));
 			};
 
 			ws.onclose = () => {
@@ -95,6 +109,55 @@ export function useLiveEntries(query: string, refresh: number): LiveEntries {
 		};
 	}, [query, refresh]);
 
+	const loadOlder = useCallback(() => {
+		if (loadingOlderRef.current || exhausted) {
+			return;
+		}
+		const current = entriesRef.current;
+		if (current.length === 0) {
+			return;
+		}
+		const oldest = current[current.length - 1];
+		if (!oldest) {
+			return;
+		}
+
+		loadingOlderRef.current = true;
+		setLoadingOlder(true);
+		const generation = generationRef.current;
+
+		searchEntries({
+			q: query,
+			until: oldest.timestamp,
+			pageSize: HISTORY_PAGE_SIZE,
+		})
+			.then((page) => {
+				if (generation !== generationRef.current) {
+					return;
+				}
+				setEntries((cur) => {
+					const merged = mergeOlder(cur, page);
+					if (merged.length === cur.length) {
+						setExhausted(true);
+					}
+					return merged;
+				});
+			})
+			.catch((e) => {
+				if (generation === generationRef.current) {
+					setError(
+						`Loading history failed: ${e instanceof Error ? e.message : e}`,
+					);
+				}
+			})
+			.finally(() => {
+				if (generation === generationRef.current) {
+					loadingOlderRef.current = false;
+					setLoadingOlder(false);
+				}
+			});
+	}, [query, exhausted]);
+
 	const setPaused = useCallback(
 		(paused: boolean) => {
 			setFrozen(paused ? entries : null);
@@ -111,6 +174,10 @@ export function useLiveEntries(query: string, refresh: number): LiveEntries {
 		clear: () => {
 			setEntries([]);
 			setFrozen(null);
+			setExhausted(false);
 		},
+		loadOlder,
+		loadingOlder,
+		exhausted,
 	};
 }

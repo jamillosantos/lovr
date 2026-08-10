@@ -149,6 +149,24 @@
 	.search-suggestion-count {
 		@apply text-muted-foreground tabular-nums;
 	}
+	.search-help-trigger {
+		@apply -translate-y-1/2 absolute top-1/2 right-1.5 text-muted-foreground;
+	}
+	.search-help-title {
+		@apply mb-2 font-medium text-sm;
+	}
+	.search-help-list {
+		@apply flex flex-col gap-1.5;
+	}
+	.search-help-row {
+		@apply flex items-baseline justify-between gap-4;
+	}
+	.search-help-example {
+		@apply font-mono text-xs;
+	}
+	.search-help-description {
+		@apply text-muted-foreground text-xs;
+	}
 
 	/* Connection status */
 	.status-indicator {
@@ -191,7 +209,16 @@
 		@apply shrink-0 text-muted-foreground tabular-nums;
 	}
 	.log-row-message {
-		@apply truncate;
+		@apply flex-1 truncate;
+	}
+	.log-row-field {
+		@apply w-40 shrink-0 truncate text-muted-foreground;
+	}
+	.log-list-footer {
+		@apply flex h-10 items-center justify-center gap-2 text-muted-foreground text-xs;
+	}
+	.log-list-spinner {
+		@apply size-4 animate-spin;
 	}
 
 
@@ -257,7 +284,13 @@
  * any @layer components rule regardless of specificity. Unlayered CSS wins
  * over every layer, keeping these overrides effective. */
 .search-field-input {
-	@apply h-10 pl-9 font-mono text-sm;
+	@apply h-10 pr-10 pl-9 font-mono text-sm;
+}
+.column-selector {
+	@apply max-h-96 overflow-y-auto;
+}
+.search-help {
+	@apply w-[30rem] max-w-[90vw];
 }
 .field-filter-input {
 	@apply h-8 pl-8 font-mono text-xs;
