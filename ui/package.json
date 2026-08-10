@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "bun --hot src/index.ts",
     "start": "NODE_ENV=production bun src/index.ts",
-    "build": "bun run build.ts",
+    "build": "NODE_ENV=production bun run build.ts",
     "lint": "biome lint",
     "format": "biome format --write",
     "typecheck": "tsc --noEmit",

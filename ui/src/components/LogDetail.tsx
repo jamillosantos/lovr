@@ -146,9 +146,9 @@ export function LogDetail({
 					{sortedFields.length > 0 && (
 						<Section title="Fields">
 							<div className="detail-fields-filter">
-								<Search className="search-field-icon" />
+								<Search className="field-filter-icon" />
 								<Input
-									className="search-field-input"
+									className="field-filter-input"
 									placeholder="Filter fields…"
 									value={fieldFilter}
 									onChange={(event) => setFieldFilter(event.target.value)}

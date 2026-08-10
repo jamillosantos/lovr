@@ -132,7 +132,22 @@
 		@apply relative flex-1;
 	}
 	.search-field-icon {
+		@apply -translate-y-1/2 absolute top-1/2 left-3 size-4 text-muted-foreground;
+	}
+	.field-filter-icon {
 		@apply -translate-y-1/2 absolute top-1/2 left-2.5 size-4 text-muted-foreground;
+	}
+	.search-suggestions {
+		@apply absolute top-full left-0 z-50 mt-1 max-h-80 w-full overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md;
+	}
+	.search-suggestion {
+		@apply flex w-full cursor-pointer items-center justify-between gap-4 rounded-sm px-2 py-1.5 text-left font-mono text-xs;
+	}
+	.search-suggestion-active {
+		@apply bg-accent text-accent-foreground;
+	}
+	.search-suggestion-count {
+		@apply text-muted-foreground tabular-nums;
 	}
 
 	/* Connection status */
@@ -242,6 +257,9 @@
  * any @layer components rule regardless of specificity. Unlayered CSS wins
  * over every layer, keeping these overrides effective. */
 .search-field-input {
+	@apply h-10 pl-9 font-mono text-sm;
+}
+.field-filter-input {
 	@apply h-8 pl-8 font-mono text-xs;
 }
 
