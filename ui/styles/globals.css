@@ -191,6 +191,35 @@
 		@apply text-muted-foreground text-xs;
 	}
 
+	/* Time filter */
+	.time-filter {
+		@apply flex w-auto gap-3 p-3;
+	}
+	.time-filter-presets {
+		@apply flex w-36 flex-col gap-0.5;
+	}
+	.time-filter-preset {
+		@apply cursor-pointer rounded-sm px-2 py-1 text-left text-xs hover:bg-accent hover:text-accent-foreground;
+	}
+	.time-filter-preset-active {
+		@apply bg-accent text-accent-foreground;
+	}
+	.time-filter-separator {
+		@apply h-auto!;
+	}
+	.time-filter-custom {
+		@apply flex flex-col gap-2;
+	}
+	.time-filter-times {
+		@apply flex gap-2;
+	}
+	.time-filter-time {
+		@apply flex flex-1 flex-col gap-1 text-muted-foreground text-xs;
+	}
+	.time-filter-apply {
+		@apply w-full;
+	}
+
 	/* Connection status */
 	.status-button {
 		@apply text-muted-foreground text-xs;

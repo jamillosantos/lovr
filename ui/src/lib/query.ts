@@ -12,12 +12,19 @@ export function appendTerm(query: string, term: string): string {
 	return trimmed ? `${trimmed} ${term}` : term;
 }
 
+import {
+	rangeFromParams,
+	rangeToParams,
+	type TimeRange,
+} from "@/lib/timerange.ts";
+
 export const DEFAULT_COLUMNS = ["timestamp", "level", "message"];
 
 // The application state persisted in the URL.
 export interface URLState {
 	q: string;
 	cols: string[];
+	range: TimeRange;
 }
 
 export function stateFromSearch(search: string): URLState {
@@ -26,6 +33,7 @@ export function stateFromSearch(search: string): URLState {
 	return {
 		q: params.get("q") ?? "",
 		cols: cols ? cols.split(",").filter(Boolean) : [...DEFAULT_COLUMNS],
+		range: rangeFromParams(params),
 	};
 }
 
@@ -40,6 +48,7 @@ export function stateURL(pathname: string, state: URLState): string {
 	if (state.cols.join(",") !== DEFAULT_COLUMNS.join(",")) {
 		params.set("cols", state.cols.join(","));
 	}
+	rangeToParams(state.range, params);
 	const encoded = params.toString();
 	return encoded ? `${pathname}?${encoded}` : pathname;
 }

@@ -107,37 +107,57 @@ describe("stateFromSearch", () => {
 		expect(stateFromSearch("?q=level%3Aerror+timeout")).toEqual({
 			q: "level:error timeout",
 			cols: DEFAULT_COLUMNS,
+			range: null,
 		});
 	});
 	test("reads cols", () => {
 		expect(stateFromSearch("?cols=timestamp,level,message,service")).toEqual({
 			q: "",
 			cols: ["timestamp", "level", "message", "service"],
+			range: null,
 		});
 	});
+	test("reads the time range", () => {
+		expect(stateFromSearch("?range=1h").range).toEqual({ preset: "1h" });
+	});
 	test("empty when missing", () => {
-		expect(stateFromSearch("")).toEqual({ q: "", cols: DEFAULT_COLUMNS });
+		expect(stateFromSearch("")).toEqual({
+			q: "",
+			cols: DEFAULT_COLUMNS,
+			range: null,
+		});
 	});
 });
 
 describe("stateURL", () => {
 	test("encodes the query and drops default cols", () => {
-		expect(stateURL("/", { q: 'msg:"a b"', cols: [...DEFAULT_COLUMNS] })).toBe(
-			"/?q=msg%3A%22a+b%22",
-		);
+		expect(
+			stateURL("/", {
+				q: 'msg:"a b"',
+				cols: [...DEFAULT_COLUMNS],
+				range: null,
+			}),
+		).toBe("/?q=msg%3A%22a+b%22");
 	});
 	test("drops all parameters at defaults", () => {
-		expect(stateURL("/", { q: "  ", cols: [...DEFAULT_COLUMNS] })).toBe("/");
+		expect(
+			stateURL("/", { q: "  ", cols: [...DEFAULT_COLUMNS], range: null }),
+		).toBe("/");
 	});
 	test("persists custom cols", () => {
 		expect(
-			stateURL("/", { q: "", cols: ["timestamp", "message", "service"] }),
+			stateURL("/", {
+				q: "",
+				cols: ["timestamp", "message", "service"],
+				range: null,
+			}),
 		).toBe("/?cols=timestamp%2Cmessage%2Cservice");
 	});
 	test("round-trips", () => {
 		const state = {
 			q: 'level:error msg:"failed to process" -service:billing',
 			cols: ["timestamp", "level", "message", "status"],
+			range: { preset: "24h" },
 		};
 		expect(stateFromSearch(stateURL("/", state).slice(1))).toEqual(state);
 	});

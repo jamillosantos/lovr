@@ -3,6 +3,7 @@ import { wsURL } from "@/config.ts";
 import type { BatchEntries, Entry } from "@/domain/models.ts";
 import { searchEntries } from "@/lib/api.ts";
 import { mergeLive, mergeOlder } from "@/lib/entries.ts";
+import { resolveRange, type TimeRange } from "@/lib/timerange.ts";
 
 const RECONNECT_DELAY_MS = 1000;
 const HISTORY_PAGE_SIZE = 100;
@@ -29,7 +30,11 @@ export interface LiveEntries {
 // the user scrolls). Both sources deduplicate by entry id. The stream
 // restarts whenever the query (or the refresh nonce) changes. Pausing only
 // freezes what is rendered — ingestion continues in the background.
-export function useLiveEntries(query: string, refresh: number): LiveEntries {
+export function useLiveEntries(
+	query: string,
+	range: TimeRange,
+	refresh: number,
+): LiveEntries {
 	const [entries, setEntries] = useState<Entry[]>([]);
 	const [frozen, setFrozen] = useState<Entry[] | null>(null);
 	const [error, setError] = useState<string | null>(null);
@@ -41,6 +46,10 @@ export function useLiveEntries(query: string, refresh: number): LiveEntries {
 	entriesRef.current = entries;
 	const loadingOlderRef = useRef(false);
 	const generationRef = useRef(0);
+	// The resolved window of the current stream; backfill stays inside it.
+	const windowRef = useRef<{ since?: string; until?: string }>({});
+
+	const rangeKey = JSON.stringify(range);
 
 	useEffect(() => {
 		let ws: WebSocket | null = null;
@@ -64,13 +73,22 @@ export function useLiveEntries(query: string, refresh: number): LiveEntries {
 			return;
 		}
 
+		const resolved = resolveRange(range);
+		windowRef.current = resolved;
+
 		const connect = () => {
 			setConnection("connecting");
 			ws = new WebSocket(url);
 
 			ws.onopen = () => {
 				setConnection("connected");
-				ws?.send(JSON.stringify({ q: query }));
+				ws?.send(
+					JSON.stringify({
+						q: query,
+						since: resolved.since,
+						until: resolved.until,
+					}),
+				);
 			};
 
 			ws.onmessage = (event) => {
@@ -107,7 +125,8 @@ export function useLiveEntries(query: string, refresh: number): LiveEntries {
 			clearTimeout(reconnectTimer);
 			ws?.close();
 		};
-	}, [query, refresh]);
+		// biome-ignore lint/correctness/useExhaustiveDependencies: range is keyed by value
+	}, [query, refresh, rangeKey]);
 
 	const loadOlder = useCallback(() => {
 		if (loadingOlderRef.current || exhausted) {
@@ -128,6 +147,7 @@ export function useLiveEntries(query: string, refresh: number): LiveEntries {
 
 		searchEntries({
 			q: query,
+			since: windowRef.current.since,
 			until: oldest.timestamp,
 			pageSize: HISTORY_PAGE_SIZE,
 		})

@@ -175,6 +175,7 @@ func (c *Connection) entriesFetcher(ctx context.Context, cancelFunc context.Canc
 
 		searchResponse, err := c.entriesSearcher.Search(ctx, entryreader.SearchRequest{
 			Since:     query.Since,
+			Until:     query.Until,
 			Query:     query.Query,
 			PageSize:  pageSize,
 			Ascending: !firstPage,

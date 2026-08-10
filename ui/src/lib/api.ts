@@ -8,17 +8,21 @@ export interface FieldValue {
 
 export interface SearchParams {
 	q?: string;
+	since?: string;
 	until?: string;
 	pageSize?: number;
 }
 
 export async function searchEntries(
-	{ q, until, pageSize }: SearchParams,
+	{ q, since, until, pageSize }: SearchParams,
 	signal?: AbortSignal,
 ): Promise<Entry[]> {
 	const params = new URLSearchParams();
 	if (q) {
 		params.set("q", q);
+	}
+	if (since) {
+		params.set("since", since);
 	}
 	if (until) {
 		params.set("until", until);
