@@ -1,16 +1,21 @@
 import { Search } from "lucide-react";
-import { useState } from "react";
 import { Input } from "@/components/ui/input";
 
-export function SearchBar({ onSubmit }: { onSubmit: (query: string) => void }) {
-	const [value, setValue] = useState("");
-
+export function SearchBar({
+	value,
+	onChange,
+	onSubmit,
+}: {
+	value: string;
+	onChange: (value: string) => void;
+	onSubmit: () => void;
+}) {
 	return (
 		<form
 			className="search-form"
 			onSubmit={(event) => {
 				event.preventDefault();
-				onSubmit(value);
+				onSubmit();
 			}}
 		>
 			<div className="search-field">
@@ -19,7 +24,7 @@ export function SearchBar({ onSubmit }: { onSubmit: (query: string) => void }) {
 					className="search-field-input"
 					placeholder="Search… (e.g. timeout, level:error, nested.host:db1)"
 					value={value}
-					onChange={(event) => setValue(event.target.value)}
+					onChange={(event) => onChange(event.target.value)}
 				/>
 			</div>
 		</form>

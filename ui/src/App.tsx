@@ -8,13 +8,27 @@ import { ThemeToggle } from "@/components/ThemeToggle.tsx";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import type { Entry } from "@/domain/models.ts";
+import type { Entry, Field } from "@/domain/models.ts";
 import { useLiveEntries } from "@/hooks/useLiveEntries.ts";
+import { appendTerm, fieldTerm } from "@/lib/query.ts";
 
 export function App() {
+	const [queryInput, setQueryInput] = useState("");
 	const [query, setQuery] = useState("");
 	const [refresh, setRefresh] = useState(0);
 	const [selected, setSelected] = useState<Entry | undefined>();
+
+	const runQuery = (q: string) => {
+		setQuery(q);
+		// Bumping the nonce restarts the stream even for an unchanged query.
+		setRefresh((r) => r + 1);
+	};
+
+	const addToSearch = (field: Field) => {
+		const next = appendTerm(queryInput, fieldTerm(field.key, field.value));
+		setQueryInput(next);
+		runQuery(next);
+	};
 
 	const { entries, connection, error, paused, setPaused, clear } =
 		useLiveEntries(query, refresh);
@@ -30,11 +44,9 @@ export function App() {
 				<h1 className="app-title">lovr</h1>
 
 				<SearchBar
-					onSubmit={(q) => {
-						setQuery(q);
-						// Re-submitting the same query restarts the stream too.
-						setRefresh((r) => r + 1);
-					}}
+					value={queryInput}
+					onChange={setQueryInput}
+					onSubmit={() => runQuery(queryInput)}
 				/>
 
 				<Button variant="outline" size="sm" onClick={() => setPaused(!paused)}>
@@ -77,6 +89,7 @@ export function App() {
 					<LogDetail
 						entry={selectedEntry}
 						onClose={() => setSelected(undefined)}
+						onAddToSearch={addToSearch}
 					/>
 				)}
 			</main>

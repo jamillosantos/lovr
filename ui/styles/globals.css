@@ -206,13 +206,22 @@
 		@apply mb-2 font-medium text-muted-foreground text-xs uppercase tracking-wide;
 	}
 	.detail-fields {
-		@apply flex flex-col gap-1 font-mono text-xs;
+		@apply flex flex-col gap-0.5 font-mono text-xs;
+	}
+	.detail-fields-filter {
+		@apply relative mb-2;
+	}
+	.detail-fields-empty {
+		@apply text-muted-foreground text-xs;
 	}
 	.detail-field {
-		@apply flex gap-2;
+		@apply flex cursor-pointer items-start gap-2 rounded-sm px-1 py-0.5 hover:bg-muted/50;
 	}
 	.detail-field-key {
 		@apply shrink-0 text-muted-foreground;
+	}
+	.detail-field-value {
+		@apply flex-1;
 	}
 	.detail-value {
 		@apply break-all;

@@ -1,10 +1,18 @@
 import { format } from "date-fns";
-import { X } from "lucide-react";
+import { Copy, Search, X } from "lucide-react";
+import { useMemo, useState } from "react";
 import { LevelBadge } from "@/components/LevelBadge.tsx";
 import { Button } from "@/components/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import type { Entry } from "@/domain/models.ts";
+import type { Entry, Field } from "@/domain/models.ts";
 
 function FieldValue({ value }: { value: unknown }) {
 	if (typeof value === "object" && value !== null) {
@@ -13,6 +21,58 @@ function FieldValue({ value }: { value: unknown }) {
 		);
 	}
 	return <span className="detail-value">{String(value)}</span>;
+}
+
+function fieldValueText(value: unknown): string {
+	if (typeof value === "object" && value !== null) {
+		return JSON.stringify(value, null, 2);
+	}
+	return String(value);
+}
+
+function FieldRow({
+	field,
+	onAddToSearch,
+}: {
+	field: Field;
+	onAddToSearch: (field: Field) => void;
+}) {
+	const scalar = typeof field.value !== "object" || field.value === null;
+
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<div className="detail-field" aria-label={`Actions for ${field.key}`}>
+					<dt className="detail-field-key">{field.key}:</dt>
+					<dd className="detail-field-value">
+						<FieldValue value={field.value} />
+					</dd>
+				</div>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="start">
+				<DropdownMenuItem
+					onSelect={() =>
+						navigator.clipboard.writeText(fieldValueText(field.value))
+					}
+				>
+					<Copy />
+					Copy value
+				</DropdownMenuItem>
+				<DropdownMenuItem
+					onSelect={() => navigator.clipboard.writeText(field.key)}
+				>
+					<Copy />
+					Copy key
+				</DropdownMenuItem>
+				{scalar && (
+					<DropdownMenuItem onSelect={() => onAddToSearch(field)}>
+						<Search />
+						Add to search
+					</DropdownMenuItem>
+				)}
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
 }
 
 function Section({
@@ -33,10 +93,31 @@ function Section({
 export function LogDetail({
 	entry,
 	onClose,
+	onAddToSearch,
 }: {
 	entry: Entry;
 	onClose: () => void;
+	onAddToSearch: (field: Field) => void;
 }) {
+	const [fieldFilter, setFieldFilter] = useState("");
+
+	const sortedFields = useMemo(
+		() => [...(entry.fields ?? [])].sort((a, b) => a.key.localeCompare(b.key)),
+		[entry.fields],
+	);
+
+	const visibleFields = useMemo(() => {
+		const needle = fieldFilter.trim().toLowerCase();
+		if (!needle) {
+			return sortedFields;
+		}
+		return sortedFields.filter(
+			(field) =>
+				field.key.toLowerCase().includes(needle) ||
+				fieldValueText(field.value).toLowerCase().includes(needle),
+		);
+	}, [sortedFields, fieldFilter]);
+
 	return (
 		<aside className="detail-panel">
 			<header className="detail-header">
@@ -62,18 +143,30 @@ export function LogDetail({
 
 			<ScrollArea className="log-scroll">
 				<div className="detail-body">
-					{entry.fields && entry.fields.length > 0 && (
+					{sortedFields.length > 0 && (
 						<Section title="Fields">
-							<dl className="detail-fields">
-								{entry.fields.map((field) => (
-									<div className="detail-field" key={field.key}>
-										<dt className="detail-field-key">{field.key}:</dt>
-										<dd>
-											<FieldValue value={field.value} />
-										</dd>
-									</div>
-								))}
-							</dl>
+							<div className="detail-fields-filter">
+								<Search className="search-field-icon" />
+								<Input
+									className="search-field-input"
+									placeholder="Filter fields…"
+									value={fieldFilter}
+									onChange={(event) => setFieldFilter(event.target.value)}
+								/>
+							</div>
+							{visibleFields.length > 0 ? (
+								<dl className="detail-fields">
+									{visibleFields.map((field) => (
+										<FieldRow
+											field={field}
+											key={field.key}
+											onAddToSearch={onAddToSearch}
+										/>
+									))}
+								</dl>
+							) : (
+								<p className="detail-fields-empty">No fields match.</p>
+							)}
 						</Section>
 					)}
 
