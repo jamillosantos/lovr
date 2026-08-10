@@ -76,6 +76,9 @@ export function App() {
 			case "exclude":
 				term = `-${fieldTerm(field.key, field.value)}`;
 				break;
+			case "add-key":
+				term = `_exists_:${field.key}`;
+				break;
 			case "exclude-key":
 				term = `-_exists_:${field.key}`;
 				break;

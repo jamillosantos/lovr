@@ -7,6 +7,7 @@ import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
+	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -30,9 +31,48 @@ function fieldValueText(value: unknown): string {
 	return String(value);
 }
 
-export type SearchAction = "add" | "exclude" | "exclude-key";
+export type SearchAction = "add" | "exclude" | "add-key" | "exclude-key";
 
-function FieldMenuContent({
+// KeyMenuContent holds key-oriented actions, opened by clicking a field key.
+function KeyMenuContent({
+	field,
+	onSearchAction,
+}: {
+	field: Field;
+	onSearchAction: (field: Field, action: SearchAction) => void;
+}) {
+	return (
+		<DropdownMenuContent align="start">
+			<DropdownMenuItem
+				onSelect={() => navigator.clipboard.writeText(field.key)}
+			>
+				<Copy />
+				Copy key
+			</DropdownMenuItem>
+			<DropdownMenuItem
+				onSelect={() =>
+					navigator.clipboard.writeText(fieldValueText(field.value))
+				}
+			>
+				<Copy />
+				Copy value
+			</DropdownMenuItem>
+			<DropdownMenuSeparator />
+			<DropdownMenuItem onSelect={() => onSearchAction(field, "add-key")}>
+				<Search />
+				Add to search
+			</DropdownMenuItem>
+			<DropdownMenuItem onSelect={() => onSearchAction(field, "exclude-key")}>
+				<EyeOff />
+				Exclude entries with key
+			</DropdownMenuItem>
+		</DropdownMenuContent>
+	);
+}
+
+// ValueMenuContent holds value-oriented actions, opened by clicking a value
+// (or an array item).
+function ValueMenuContent({
 	field,
 	onSearchAction,
 }: {
@@ -51,12 +91,7 @@ function FieldMenuContent({
 				<Copy />
 				Copy value
 			</DropdownMenuItem>
-			<DropdownMenuItem
-				onSelect={() => navigator.clipboard.writeText(field.key)}
-			>
-				<Copy />
-				Copy key
-			</DropdownMenuItem>
+			{scalar && <DropdownMenuSeparator />}
 			{scalar && (
 				<DropdownMenuItem onSelect={() => onSearchAction(field, "add")}>
 					<Search />
@@ -69,11 +104,30 @@ function FieldMenuContent({
 					Exclude value
 				</DropdownMenuItem>
 			)}
-			<DropdownMenuItem onSelect={() => onSearchAction(field, "exclude-key")}>
-				<EyeOff />
-				Exclude entries with key
-			</DropdownMenuItem>
 		</DropdownMenuContent>
+	);
+}
+
+// FieldKey renders a field key as the trigger of the key menu.
+function FieldKey({
+	field,
+	onSearchAction,
+}: {
+	field: Field;
+	onSearchAction: (field: Field, action: SearchAction) => void;
+}) {
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<dt
+					className="detail-field-key detail-field-key-clickable"
+					aria-label={`Actions for ${field.key}`}
+				>
+					{field.key}:
+				</dt>
+			</DropdownMenuTrigger>
+			<KeyMenuContent field={field} onSearchAction={onSearchAction} />
+		</DropdownMenu>
 	);
 }
 
@@ -90,17 +144,7 @@ function ArrayFieldRow({
 }) {
 	return (
 		<div className="detail-field detail-field-static">
-			<DropdownMenu>
-				<DropdownMenuTrigger asChild>
-					<dt
-						className="detail-field-key detail-field-key-clickable"
-						aria-label={`Actions for ${field.key}`}
-					>
-						{field.key}:
-					</dt>
-				</DropdownMenuTrigger>
-				<FieldMenuContent field={field} onSearchAction={onSearchAction} />
-			</DropdownMenu>
+			<FieldKey field={field} onSearchAction={onSearchAction} />
 			<dd className="detail-field-value detail-field-items">
 				{items.map((item, index) => (
 					<DropdownMenu key={`${fieldValueText(item)}-${index}`}>
@@ -109,7 +153,7 @@ function ArrayFieldRow({
 								{fieldValueText(item)}
 							</button>
 						</DropdownMenuTrigger>
-						<FieldMenuContent
+						<ValueMenuContent
 							field={{ key: field.key, value: item }}
 							onSearchAction={onSearchAction}
 						/>
@@ -138,17 +182,20 @@ function FieldRow({
 	}
 
 	return (
-		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<div className="detail-field" aria-label={`Actions for ${field.key}`}>
-					<dt className="detail-field-key">{field.key}:</dt>
-					<dd className="detail-field-value">
+		<div className="detail-field detail-field-static">
+			<FieldKey field={field} onSearchAction={onSearchAction} />
+			<DropdownMenu>
+				<DropdownMenuTrigger asChild>
+					<dd
+						className="detail-field-value detail-field-value-clickable"
+						aria-label={`Actions for the value of ${field.key}`}
+					>
 						<FieldValue value={field.value} />
 					</dd>
-				</div>
-			</DropdownMenuTrigger>
-			<FieldMenuContent field={field} onSearchAction={onSearchAction} />
-		</DropdownMenu>
+				</DropdownMenuTrigger>
+				<ValueMenuContent field={field} onSearchAction={onSearchAction} />
+			</DropdownMenu>
+		</div>
 	);
 }
 
