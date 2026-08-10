@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"sync"
 
-	"github.com/blugelabs/bluge"
+	"github.com/blevesearch/bleve/v2"
 	"github.com/spf13/cobra"
 
 	"github.com/jamillosantos/lovr/internal/parsers"
@@ -32,12 +32,12 @@ search for log entries on a modern UI.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := context.Background()
 
-		blugeWriter, err := bluge.OpenWriter(bluge.InMemoryOnlyConfig())
+		index, err := bleve.NewMemOnly(processors.NewIndexMapping())
 		if err != nil {
-			reportFatalError(fmt.Errorf("error opening bluge writer: %w", err))
+			reportFatalError(fmt.Errorf("error opening index: %w", err))
 		}
 		defer func() {
-			_ = blugeWriter.Close()
+			_ = index.Close()
 		}()
 
 		sourceReader, releaseSource, err := service.GetSource(sourceArg)
@@ -54,7 +54,7 @@ search for log entries on a modern UI.`,
 			reportFatalError(err)
 		}
 
-		blugerProcessor := processors.NewBluger(blugeWriter)
+		indexer := processors.NewIndexer(index)
 
 		processorsList := make([]service.EntryProcessor, 0)
 		if filterArg != "" {
@@ -64,7 +64,7 @@ search for log entries on a modern UI.`,
 			}
 			processorsList = append(processorsList, filterprocessor)
 		}
-		processorsList = append(processorsList, processors.NewStdout(), blugerProcessor)
+		processorsList = append(processorsList, processors.NewStdout(), indexer)
 
 		var wc sync.WaitGroup
 
@@ -75,7 +75,7 @@ search for log entries on a modern UI.`,
 			runFetcher(ctx, entriesFetcher, processorsList)
 		}()
 
-		entryReader := entryreader.NewReader(blugeWriter, blugerProcessor)
+		entryReader := entryreader.NewReader(index)
 
 		opts := []transporthttp.Option{
 			transporthttp.WithBindAddr(bindAddrArg),

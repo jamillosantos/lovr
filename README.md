@@ -129,17 +129,26 @@ docker-compose logs -f --no-log-prefix api | lovr
 ### Web UI
 
 The `web` command does everything the default command does and additionally
-indexes every entry into an in-memory search index (bluge), exposing a web UI
-with live tail and full-text search:
+indexes every entry into an in-memory search index
+([bleve](https://github.com/blevesearch/bleve)), exposing a web UI with live
+tail and full-text search:
 
 ```
 ./yourapp | lovr web
 ```
 
-Then open http://127.0.0.1:8080 (change with `-b`). The search box accepts
-plain terms (`timeout`), fielded queries (`level:error`, `nested.host:db1`)
-and anything else the [bluge query string
-syntax](https://github.com/blugelabs/query_string) supports.
+Then open http://127.0.0.1:8080 (change with `-b`). Search syntax (all terms
+must match):
+
+| Example                     | Meaning                              |
+| --------------------------- | ------------------------------------ |
+| `error timeout`             | all terms must match (AND)           |
+| `level:error`               | match a field                        |
+| `nested.host:db1`           | nested fields use dots               |
+| `message:"failed to process"` | exact phrase                       |
+| `-level:debug`              | exclude matches                      |
+| `status:>499`               | numeric ranges (`>`, `>=`, `<`, `<=`)|
+| `message:*onnect*`          | wildcards match inside words         |
 
 The UI (bun + React + Tailwind) lives in `ui/` and is embedded into the
 binary when building with the `ui` tag:

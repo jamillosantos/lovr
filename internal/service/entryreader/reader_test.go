@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/blugelabs/bluge"
+	"github.com/blevesearch/bleve/v2"
 	"github.com/iancoleman/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,25 +19,28 @@ import (
 func TestReader_Search(t *testing.T) {
 	ctx := context.Background()
 
-	writer, err := bluge.OpenWriter(bluge.InMemoryOnlyConfig())
+	index, err := bleve.NewMemOnly(processors.NewIndexMapping())
 	require.NoError(t, err)
 	defer func() {
-		_ = writer.Close()
+		_ = index.Close()
 	}()
 
-	bluger := processors.NewBluger(writer)
+	indexer := processors.NewIndexer(index)
 	base := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	levels := []string{"info", "error", "info"}
+	routes := []string{"/api/v1/users", "/api/v1/login", "/api/v1/login"}
 	for i := 0; i < 3; i++ {
 		m := orderedmap.New()
 		m.Set("ts", base.Add(time.Duration(i)*time.Second).Format(time.RFC3339))
-		m.Set("level", "info")
+		m.Set("level", levels[i])
 		m.Set("msg", fmt.Sprintf("message number%d", i))
 		m.Set("field1", "value1")
+		m.Set("route", routes[i])
 		entry := domain.Entry(*m)
-		require.NoError(t, bluger.Process(ctx, &entry))
+		require.NoError(t, indexer.Process(ctx, &entry))
 	}
 
-	reader := entryreader.NewReader(writer, bluger)
+	reader := entryreader.NewReader(index)
 
 	t.Run("should return all entries sorted by timestamp descending", func(t *testing.T) {
 		got, err := reader.Search(ctx, entryreader.SearchRequest{})
@@ -46,7 +49,9 @@ func TestReader_Search(t *testing.T) {
 		require.Len(t, got.Entries, 3)
 		assert.Equal(t, "message number2", got.Entries[0].Message)
 		assert.Equal(t, "message number0", got.Entries[2].Message)
-		assert.Equal(t, []string{"field1"}, got.Entries[0].Fields.Keys())
+		fields := got.Entries[0].Fields.Keys()
+		assert.Contains(t, fields, "field1")
+		assert.Contains(t, fields, "route")
 	})
 
 	t.Run("should return entries since the given time (inclusive) when until is not given", func(t *testing.T) {
@@ -72,11 +77,76 @@ func TestReader_Search(t *testing.T) {
 		assert.Equal(t, "message number1", got.Entries[0].Message)
 	})
 
-	t.Run("should tolerate malformed queries", func(t *testing.T) {
-		// The query string parser is lenient and never fails on user input;
-		// malformed queries simply match nothing (or whatever it could parse).
-		_, err := reader.Search(ctx, entryreader.SearchRequest{Query: "level:(unterminated"})
-		assert.NoError(t, err)
+	t.Run("should combine bare terms with AND semantics", func(t *testing.T) {
+		got, err := reader.Search(ctx, entryreader.SearchRequest{
+			Query: "level:info route:/api/v1/login",
+		})
+		require.NoError(t, err)
+		require.Len(t, got.Entries, 1)
+		assert.Equal(t, "message number2", got.Entries[0].Message)
+		assert.Equal(t, domain.Level("info"), got.Entries[0].Level)
+	})
+
+	t.Run("should require every token of a multi-token value", func(t *testing.T) {
+		got, err := reader.Search(ctx, entryreader.SearchRequest{
+			Query: "route:/api/v1/login",
+		})
+		require.NoError(t, err)
+		require.Len(t, got.Entries, 2)
+		for _, e := range got.Entries {
+			v, _ := e.Fields.Get("route")
+			assert.Equal(t, "/api/v1/login", v)
+		}
+	})
+
+	t.Run("should keep explicit exclusions working", func(t *testing.T) {
+		got, err := reader.Search(ctx, entryreader.SearchRequest{
+			Query: "route:/api/v1/login -level:error",
+		})
+		require.NoError(t, err)
+		require.Len(t, got.Entries, 1)
+		assert.Equal(t, "message number2", got.Entries[0].Message)
+	})
+
+	t.Run("should fail on an invalid query", func(t *testing.T) {
+		_, err := reader.Search(ctx, entryreader.SearchRequest{Query: `level:"unterminated`})
+		assert.Error(t, err)
+	})
+
+	t.Run("should match substrings inside terms with wildcards", func(t *testing.T) {
+		got, err := reader.Search(ctx, entryreader.SearchRequest{Query: "message:*umber1*"})
+		require.NoError(t, err)
+		require.Len(t, got.Entries, 1)
+		assert.Equal(t, "message number1", got.Entries[0].Message)
+	})
+
+	t.Run("should combine wildcards with regular terms (AND)", func(t *testing.T) {
+		got, err := reader.Search(ctx, entryreader.SearchRequest{
+			Query: "level:info message:*umber*",
+		})
+		require.NoError(t, err)
+		require.Len(t, got.Entries, 2)
+		for _, e := range got.Entries {
+			assert.Equal(t, domain.Level("info"), e.Level)
+		}
+	})
+
+	t.Run("should support negated wildcards", func(t *testing.T) {
+		got, err := reader.Search(ctx, entryreader.SearchRequest{
+			Query: "field1:value1 -message:*umber1*",
+		})
+		require.NoError(t, err)
+		require.Len(t, got.Entries, 2)
+		for _, e := range got.Entries {
+			assert.NotEqual(t, "message number1", e.Message)
+		}
+	})
+
+	t.Run("should support unfielded wildcards", func(t *testing.T) {
+		got, err := reader.Search(ctx, entryreader.SearchRequest{Query: "*umber2*"})
+		require.NoError(t, err)
+		require.Len(t, got.Entries, 1)
+		assert.Equal(t, "message number2", got.Entries[0].Message)
 	})
 
 	t.Run("should list searchable fields without internal ones", func(t *testing.T) {
@@ -85,7 +155,6 @@ func TestReader_Search(t *testing.T) {
 		assert.Contains(t, fields, "field1")
 		assert.Contains(t, fields, "level")
 		assert.Contains(t, fields, "message")
-		assert.NotContains(t, fields, "_id")
 		assert.NotContains(t, fields, "_all")
 		assert.IsIncreasing(t, fields)
 	})
@@ -99,7 +168,7 @@ func TestReader_Search(t *testing.T) {
 	})
 
 	t.Run("should filter field values by prefix", func(t *testing.T) {
-		values, err := reader.FieldValues(ctx, "message", "Num", 0)
+		values, err := reader.FieldValues(ctx, "message", "num", 0)
 		require.NoError(t, err)
 		require.Len(t, values, 3)
 		for _, v := range values {

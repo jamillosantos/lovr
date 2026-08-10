@@ -3,40 +3,27 @@ package entryreader
 import (
 	"context"
 	"fmt"
-	"math"
+	"sort"
+	"strconv"
+	"strings"
 	"time"
 
-	"github.com/blugelabs/bluge"
-	"github.com/blugelabs/bluge/search"
-	querystr "github.com/blugelabs/query_string"
+	"github.com/blevesearch/bleve/v2"
+	"github.com/blevesearch/bleve/v2/search/query"
 	"github.com/iancoleman/orderedmap"
 
 	"github.com/jamillosantos/lovr/internal/domain"
 	"github.com/jamillosantos/lovr/internal/service/processors"
 )
 
-type BlugeWriter interface {
-	Reader() (*bluge.Reader, error)
-}
-
-type EntriesCounter interface {
-	EntriesCount() int64
-}
-
-type BlugeReader interface {
-	Search(ctx context.Context, req bluge.SearchRequest) (search.DocumentMatchIterator, error)
-	Fields() ([]string, error)
-}
-
+// Reader searches log entries indexed by processors.Indexer.
 type Reader struct {
-	blugeWriter    BlugeWriter
-	entriesCounter EntriesCounter
+	index bleve.Index
 }
 
-func NewReader(w BlugeWriter, entriesCounter EntriesCounter) *Reader {
+func NewReader(index bleve.Index) *Reader {
 	return &Reader{
-		blugeWriter:    w,
-		entriesCounter: entriesCounter,
+		index: index,
 	}
 }
 
@@ -57,43 +44,43 @@ type SearchResponse struct {
 	Duration time.Duration
 }
 
-func (r *Reader) Search(_ context.Context, req SearchRequest) (SearchResponse, error) {
-	blugeReader, err := r.blugeWriter.Reader()
-	if err != nil {
-		return SearchResponse{}, err
-	}
-	defer func() {
-		_ = blugeReader.Close()
-	}()
-
-	qs := make([]bluge.Query, 0)
+func (r *Reader) Search(ctx context.Context, req SearchRequest) (SearchResponse, error) {
+	qs := make([]query.Query, 0, 2)
 	if !req.Since.IsZero() || !req.Until.IsZero() {
 		until := req.Until
 		if until.IsZero() {
-			// bluge encodes timestamps as unix nanoseconds; this is the
-			// highest bound it can represent (year 2262).
-			until = time.Unix(0, math.MaxInt64)
+			// Effectively unbounded upper end.
+			until = time.Date(2200, 1, 1, 0, 0, 0, 0, time.UTC)
 		}
+		inclusive := true
+		exclusive := false
 		// The lower bound is inclusive: entries sharing the boundary
 		// timestamp may be indexed after a poll read it, and consumers
 		// deduplicate by entry ID.
-		qs = append(qs, bluge.NewDateRangeInclusiveQuery(req.Since, until, true, false).SetField(processors.FieldTimestamp))
+		dr := bleve.NewDateRangeInclusiveQuery(req.Since, until, &inclusive, &exclusive)
+		dr.SetField(processors.FieldTimestamp)
+		qs = append(qs, dr)
 	}
 	if req.Query != "" {
-		q, err := querystr.ParseQueryString(req.Query, querystr.DefaultOptions())
-		if err != nil {
-			return SearchResponse{}, err
+		rest, wildcards := extractWildcards(req.Query)
+		if rest != "" {
+			parsed, err := query.NewQueryStringQuery(rest).Parse()
+			if err != nil {
+				return SearchResponse{}, fmt.Errorf("invalid query: %w", err)
+			}
+			qs = append(qs, requireAllTerms(parsed))
 		}
-		qs = append(qs, q)
+		qs = append(qs, wildcards...)
 	}
 
-	var q bluge.Query
-	if len(qs) == 0 {
-		q = bluge.NewMatchAllQuery()
-	} else {
-		q = bluge.NewBooleanQuery().AddMust(
-			qs...,
-		)
+	var q query.Query
+	switch len(qs) {
+	case 0:
+		q = bleve.NewMatchAllQuery()
+	case 1:
+		q = qs[0]
+	default:
+		q = bleve.NewConjunctionQuery(qs...)
 	}
 
 	pageSize := req.PageSize
@@ -107,58 +94,161 @@ func (r *Reader) Search(_ context.Context, req SearchRequest) (SearchResponse, e
 	if req.Ascending {
 		sortOrder = processors.FieldTimestamp
 	}
-	request := bluge.NewTopNSearch(pageSize, q).
-		SortBy([]string{sortOrder}).
-		WithStandardAggregations().
-		IncludeLocations()
-	documentMatchIterator, err := blugeReader.Search(context.Background(), request)
+
+	request := bleve.NewSearchRequestOptions(q, pageSize, 0, false)
+	request.SortBy([]string{sortOrder})
+	request.Fields = []string{"*"}
+
+	result, err := r.index.SearchInContext(ctx, request)
 	if err != nil {
 		return SearchResponse{}, fmt.Errorf("error executing search: %w", err)
 	}
 
-	entries := make([]*domain.LogEntry, 0)
-
-	match, err := documentMatchIterator.Next()
-	for err == nil && match != nil {
+	entries := make([]*domain.LogEntry, 0, len(result.Hits))
+	for _, hit := range result.Hits {
 		entry := &domain.LogEntry{
+			ID:     hit.ID,
 			Fields: *orderedmap.New(),
 		}
-		entries = append(entries, entry)
-		err = match.VisitStoredFields(func(field string, value []byte) bool {
-			switch field {
-			case processors.FieldID:
-				entry.ID = string(value)
-			case processors.FieldTimestamp:
-				v, err := bluge.DecodeDateTime(value)
-				if err == nil {
-					entry.Timestamp = v
-				}
-			// TODO What to do when fail parsing the datetime.
-			case processors.FieldMessage:
-				entry.Message = string(value)
-			case processors.FieldLevel:
-				entry.Level = domain.Level(value)
-			case processors.FieldCaller:
-				entry.Caller = string(value)
-			case processors.FieldStacktrace:
-				entry.Stacktrace = string(value)
-			default:
-				entry.Fields.Set(field, string(value))
-			}
-			return true
-		})
-		if err != nil {
-			return SearchResponse{}, fmt.Errorf("error loading stored fields: %w", err)
+
+		keys := make([]string, 0, len(hit.Fields))
+		for k := range hit.Fields {
+			keys = append(keys, k)
 		}
-		match, err = documentMatchIterator.Next()
+		sort.Strings(keys)
+
+		for _, k := range keys {
+			value := hit.Fields[k]
+			switch k {
+			case processors.FieldTimestampNanos:
+				if s, ok := value.(string); ok {
+					if nanos, err := strconv.ParseInt(s, 10, 64); err == nil {
+						entry.Timestamp = time.Unix(0, nanos).UTC()
+					}
+				}
+			case processors.FieldTimestamp:
+				// Fallback only: the stored datetime is truncated to seconds.
+				if entry.Timestamp.IsZero() {
+					if s, ok := value.(string); ok {
+						if ts, err := parseStoredTime(s); err == nil {
+							entry.Timestamp = ts
+						}
+					}
+				}
+			case processors.FieldMessage:
+				entry.Message, _ = value.(string)
+			case processors.FieldLevel:
+				if s, ok := value.(string); ok {
+					entry.Level = domain.Level(s)
+				}
+			case processors.FieldCaller:
+				entry.Caller, _ = value.(string)
+			case processors.FieldStacktrace:
+				entry.Stacktrace, _ = value.(string)
+			default:
+				entry.Fields.Set(k, value)
+			}
+		}
+		entries = append(entries, entry)
 	}
+
+	count, err := r.index.DocCount()
 	if err != nil {
-		return SearchResponse{}, fmt.Errorf("error iterating document matches: %w", err)
+		return SearchResponse{}, fmt.Errorf("error counting entries: %w", err)
 	}
 
 	return SearchResponse{
-		Count:    r.entriesCounter.EntriesCount(),
-		Duration: documentMatchIterator.Aggregations().Duration(),
+		Count:    int64(count),
+		Duration: result.Took,
 		Entries:  entries,
 	}, nil
+}
+
+func parseStoredTime(s string) (time.Time, error) {
+	ts, err := time.Parse(time.RFC3339Nano, s)
+	if err != nil {
+		return time.Parse(time.RFC3339, s)
+	}
+	return ts, nil
+}
+
+// extractWildcards pulls tokens containing * or ? out of the query string
+// (bleve's query string syntax has no wildcard support) and converts them to
+// wildcard queries matching inside indexed terms, e.g. msg:*onnect* or
+// route:/api/*/login. Field prefixes and +/- modifiers are honored; the
+// remaining tokens are returned for regular query string parsing.
+func extractWildcards(q string) (string, []query.Query) {
+	tokens := strings.Fields(q)
+	kept := make([]string, 0, len(tokens))
+	var wildcards []query.Query
+
+	for _, token := range tokens {
+		// Quoted phrases are left for the query string parser.
+		if !strings.ContainsAny(token, "*?") || strings.Contains(token, `"`) {
+			kept = append(kept, token)
+			continue
+		}
+
+		modifier := ""
+		body := token
+		if strings.HasPrefix(body, "+") || strings.HasPrefix(body, "-") {
+			modifier = body[:1]
+			body = body[1:]
+		}
+		field := ""
+		if colon := strings.Index(body, ":"); colon >= 0 {
+			field = body[:colon]
+			body = body[colon+1:]
+		}
+		if body == "" {
+			kept = append(kept, token)
+			continue
+		}
+
+		// Terms are indexed lowercased by the standard analyzer.
+		wq := query.NewWildcardQuery(strings.ToLower(body))
+		if field != "" {
+			wq.SetField(field)
+		}
+		if modifier == "-" {
+			wildcards = append(wildcards, query.NewBooleanQuery(nil, nil, []query.Query{wq}))
+			continue
+		}
+		wildcards = append(wildcards, wq)
+	}
+
+	return strings.Join(kept, " "), wildcards
+}
+
+// requireAllTerms rewrites a parsed query string so bare terms are all
+// required (AND) instead of bleve's default "should" (OR) semantics, and
+// multi-token matches (e.g. route:/api/v1/login) require every token.
+// Explicit +required/-excluded modifiers keep their meaning.
+func requireAllTerms(q query.Query) query.Query {
+	switch qq := q.(type) {
+	case *query.BooleanQuery:
+		if disj, ok := qq.Should.(*query.DisjunctionQuery); ok {
+			terms := make([]query.Query, 0, len(disj.Disjuncts))
+			for _, d := range disj.Disjuncts {
+				terms = append(terms, requireAllTerms(d))
+			}
+			if conj, ok := qq.Must.(*query.ConjunctionQuery); ok {
+				conj.Conjuncts = append(conj.Conjuncts, terms...)
+			} else if qq.Must == nil {
+				qq.Must = query.NewConjunctionQuery(terms)
+			}
+			qq.Should = nil
+		}
+		if conj, ok := qq.Must.(*query.ConjunctionQuery); ok {
+			for i, c := range conj.Conjuncts {
+				conj.Conjuncts[i] = requireAllTerms(c)
+			}
+		}
+		return qq
+	case *query.MatchQuery:
+		qq.Operator = query.MatchQueryOperatorAnd
+		return qq
+	default:
+		return q
+	}
 }
