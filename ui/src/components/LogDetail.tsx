@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { Copy, Search, X } from "lucide-react";
+import { Copy, EyeOff, Search, SearchX, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { LevelBadge } from "@/components/LevelBadge.tsx";
 import { Button } from "@/components/ui/button";
@@ -30,12 +30,14 @@ function fieldValueText(value: unknown): string {
 	return String(value);
 }
 
+export type SearchAction = "add" | "exclude" | "exclude-key";
+
 function FieldMenuContent({
 	field,
-	onAddToSearch,
+	onSearchAction,
 }: {
 	field: Field;
-	onAddToSearch?: (field: Field) => void;
+	onSearchAction: (field: Field, action: SearchAction) => void;
 }) {
 	const scalar = typeof field.value !== "object" || field.value === null;
 
@@ -55,12 +57,22 @@ function FieldMenuContent({
 				<Copy />
 				Copy key
 			</DropdownMenuItem>
-			{scalar && onAddToSearch && (
-				<DropdownMenuItem onSelect={() => onAddToSearch(field)}>
+			{scalar && (
+				<DropdownMenuItem onSelect={() => onSearchAction(field, "add")}>
 					<Search />
 					Add to search
 				</DropdownMenuItem>
 			)}
+			{scalar && (
+				<DropdownMenuItem onSelect={() => onSearchAction(field, "exclude")}>
+					<SearchX />
+					Exclude value
+				</DropdownMenuItem>
+			)}
+			<DropdownMenuItem onSelect={() => onSearchAction(field, "exclude-key")}>
+				<EyeOff />
+				Exclude entries with key
+			</DropdownMenuItem>
 		</DropdownMenuContent>
 	);
 }
@@ -70,11 +82,11 @@ function FieldMenuContent({
 function ArrayFieldRow({
 	field,
 	items,
-	onAddToSearch,
+	onSearchAction,
 }: {
 	field: Field;
 	items: unknown[];
-	onAddToSearch: (field: Field) => void;
+	onSearchAction: (field: Field, action: SearchAction) => void;
 }) {
 	return (
 		<div className="detail-field detail-field-static">
@@ -87,7 +99,7 @@ function ArrayFieldRow({
 						{field.key}:
 					</dt>
 				</DropdownMenuTrigger>
-				<FieldMenuContent field={field} />
+				<FieldMenuContent field={field} onSearchAction={onSearchAction} />
 			</DropdownMenu>
 			<dd className="detail-field-value detail-field-items">
 				{items.map((item, index) => (
@@ -99,7 +111,7 @@ function ArrayFieldRow({
 						</DropdownMenuTrigger>
 						<FieldMenuContent
 							field={{ key: field.key, value: item }}
-							onAddToSearch={onAddToSearch}
+							onSearchAction={onSearchAction}
 						/>
 					</DropdownMenu>
 				))}
@@ -110,17 +122,17 @@ function ArrayFieldRow({
 
 function FieldRow({
 	field,
-	onAddToSearch,
+	onSearchAction,
 }: {
 	field: Field;
-	onAddToSearch: (field: Field) => void;
+	onSearchAction: (field: Field, action: SearchAction) => void;
 }) {
 	if (Array.isArray(field.value)) {
 		return (
 			<ArrayFieldRow
 				field={field}
 				items={field.value}
-				onAddToSearch={onAddToSearch}
+				onSearchAction={onSearchAction}
 			/>
 		);
 	}
@@ -135,7 +147,7 @@ function FieldRow({
 					</dd>
 				</div>
 			</DropdownMenuTrigger>
-			<FieldMenuContent field={field} onAddToSearch={onAddToSearch} />
+			<FieldMenuContent field={field} onSearchAction={onSearchAction} />
 		</DropdownMenu>
 	);
 }
@@ -158,11 +170,11 @@ function Section({
 export function LogDetail({
 	entry,
 	onClose,
-	onAddToSearch,
+	onSearchAction,
 }: {
 	entry: Entry;
 	onClose: () => void;
-	onAddToSearch: (field: Field) => void;
+	onSearchAction: (field: Field, action: SearchAction) => void;
 }) {
 	const [fieldFilter, setFieldFilter] = useState("");
 
@@ -225,7 +237,7 @@ export function LogDetail({
 										<FieldRow
 											field={field}
 											key={field.key}
-											onAddToSearch={onAddToSearch}
+											onSearchAction={onSearchAction}
 										/>
 									))}
 								</dl>

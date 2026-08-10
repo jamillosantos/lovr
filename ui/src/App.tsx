@@ -2,7 +2,7 @@ import { AlertCircle, Pause, Play, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { ColumnSelector } from "@/components/ColumnSelector.tsx";
 import { ConnectionStatus } from "@/components/ConnectionStatus.tsx";
-import { LogDetail } from "@/components/LogDetail.tsx";
+import { LogDetail, type SearchAction } from "@/components/LogDetail.tsx";
 import { LogList } from "@/components/LogList.tsx";
 import { SearchBar } from "@/components/SearchBar.tsx";
 import { ThemeToggle } from "@/components/ThemeToggle.tsx";
@@ -67,8 +67,20 @@ export function App() {
 		return () => window.removeEventListener("popstate", onPopState);
 	}, []);
 
-	const addToSearch = (field: Field) => {
-		const next = appendTerm(queryInput, fieldTerm(field.key, field.value));
+	const searchAction = (field: Field, action: SearchAction) => {
+		let term: string;
+		switch (action) {
+			case "add":
+				term = fieldTerm(field.key, field.value);
+				break;
+			case "exclude":
+				term = `-${fieldTerm(field.key, field.value)}`;
+				break;
+			case "exclude-key":
+				term = `-_exists_:${field.key}`;
+				break;
+		}
+		const next = appendTerm(queryInput, term);
 		setQueryInput(next);
 		runQuery(next);
 	};
@@ -147,7 +159,7 @@ export function App() {
 					<LogDetail
 						entry={selectedEntry}
 						onClose={() => setSelected(undefined)}
-						onAddToSearch={addToSearch}
+						onSearchAction={searchAction}
 					/>
 				)}
 			</main>
