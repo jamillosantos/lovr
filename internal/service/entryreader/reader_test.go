@@ -78,4 +78,42 @@ func TestReader_Search(t *testing.T) {
 		_, err := reader.Search(ctx, entryreader.SearchRequest{Query: "level:(unterminated"})
 		assert.NoError(t, err)
 	})
+
+	t.Run("should list searchable fields without internal ones", func(t *testing.T) {
+		fields, err := reader.Fields(ctx)
+		require.NoError(t, err)
+		assert.Contains(t, fields, "field1")
+		assert.Contains(t, fields, "level")
+		assert.Contains(t, fields, "message")
+		assert.NotContains(t, fields, "_id")
+		assert.NotContains(t, fields, "_all")
+		assert.IsIncreasing(t, fields)
+	})
+
+	t.Run("should list field values with counts", func(t *testing.T) {
+		values, err := reader.FieldValues(ctx, "field1", "", 0)
+		require.NoError(t, err)
+		require.Len(t, values, 1)
+		assert.Equal(t, "value1", values[0].Value)
+		assert.Equal(t, uint64(3), values[0].Count)
+	})
+
+	t.Run("should filter field values by prefix", func(t *testing.T) {
+		values, err := reader.FieldValues(ctx, "message", "Num", 0)
+		require.NoError(t, err)
+		require.Len(t, values, 3)
+		for _, v := range values {
+			assert.Contains(t, v.Value, "number")
+		}
+
+		values, err = reader.FieldValues(ctx, "message", "nope", 0)
+		require.NoError(t, err)
+		assert.Empty(t, values)
+	})
+
+	t.Run("should return no values for binary-indexed fields", func(t *testing.T) {
+		values, err := reader.FieldValues(ctx, "timestamp", "", 0)
+		require.NoError(t, err)
+		assert.Empty(t, values)
+	})
 }

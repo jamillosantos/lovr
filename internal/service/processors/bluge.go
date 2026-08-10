@@ -156,14 +156,19 @@ func addFields(doc *bluge.Document, prefix string, fields orderedmap.OrderedMap)
 	return nil
 }
 
-// addNumericField indexes a numeric value for range queries/sorting while
-// storing a human-readable text twin: bluge stores numeric values as
-// prefix-coded bytes, which would reach clients as garbage strings.
+// addNumericField indexes a numeric value twice under the same name: as a
+// numeric field for range queries/sorting/aggregations, and as a keyword text
+// twin that provides the stored value (bluge stores numerics as prefix-coded
+// bytes, which would reach clients as garbage strings), exact-term matches
+// (e.g. status:404) and readable dictionary terms for autocomplete.
 func addNumericField(doc *bluge.Document, key string, value float64) {
 	ff := bluge.NewNumericField(key, value)
 	ff.FieldOptions = bluge.Index | bluge.Sortable | bluge.Aggregatable
 	doc.AddField(ff)
-	doc.AddField(bluge.NewStoredOnlyField(key, []byte(strconv.FormatFloat(value, 'f', -1, 64))))
+
+	tf := bluge.NewKeywordField(key, strconv.FormatFloat(value, 'f', -1, 64))
+	tf.FieldOptions = bluge.Index | bluge.Store
+	doc.AddField(tf)
 }
 
 func (s *Bluger) EntriesCount() int64 {

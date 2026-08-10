@@ -16,6 +16,8 @@ import (
 
 type EntryReader interface {
 	Search(ctx context.Context, req entryreader.SearchRequest) (entryreader.SearchResponse, error)
+	Fields(ctx context.Context) ([]string, error)
+	FieldValues(ctx context.Context, field, prefix string, limit int) ([]entryreader.FieldValue, error)
 }
 
 type API struct {
@@ -78,6 +80,8 @@ func (api *API) setupHandlers(app *fiber.App) {
 	})
 
 	app.Get("/entries/search", api.EntriesSearch)
+	app.Get("/entries/fields", api.EntriesFields)
+	app.Get("/entries/fields/:field/values", api.EntriesFieldValues)
 	app.Get("/entries/live", fiberws.New(api.HandleWebsocket))
 
 	if api.uiFS != nil {
