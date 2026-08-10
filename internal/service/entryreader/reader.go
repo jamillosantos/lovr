@@ -60,15 +60,13 @@ func (r *Reader) Search(ctx context.Context, req SearchRequest) (SearchResponse,
 		qs = append(qs, dr)
 	}
 	if req.Query != "" {
-		rest, wildcards := extractWildcards(req.Query)
-		if rest != "" {
-			parsed, err := query.NewQueryStringQuery(rest).Parse()
-			if err != nil {
-				return SearchResponse{}, fmt.Errorf("invalid query: %w", err)
-			}
-			qs = append(qs, requireAllTerms(parsed))
+		parsed, err := buildQuery(req.Query)
+		if err != nil {
+			return SearchResponse{}, err
 		}
-		qs = append(qs, wildcards...)
+		if parsed != nil {
+			qs = append(qs, parsed)
+		}
 	}
 
 	var q query.Query
@@ -168,6 +166,175 @@ func parseStoredTime(s string) (time.Time, error) {
 		return time.Parse(time.RFC3339, s)
 	}
 	return ts, nil
+}
+
+// buildQuery turns the user query into a bleve query with this grammar:
+//
+//	expr  := and (OR and)*
+//	and   := unit+          (implicit AND between units)
+//	unit  := '(' expr ')' | term
+//
+// The uppercase OR keyword separates alternatives, parentheses group for
+// precedence, and both are ignored inside double quotes.
+func buildQuery(q string) (query.Query, error) {
+	p := &queryParser{tokens: tokenizeQuery(q)}
+	built, err := p.parseExpr()
+	if err != nil {
+		return nil, err
+	}
+	if p.pos < len(p.tokens) {
+		return nil, fmt.Errorf("invalid query: unexpected %q", p.tokens[p.pos])
+	}
+	return built, nil
+}
+
+// tokenizeQuery splits the query into words, "(" and ")" tokens, keeping
+// quoted sections intact.
+func tokenizeQuery(q string) []string {
+	tokens := make([]string, 0, 8)
+	var tok strings.Builder
+	flush := func() {
+		if tok.Len() > 0 {
+			tokens = append(tokens, tok.String())
+			tok.Reset()
+		}
+	}
+	inQuotes := false
+	for _, r := range q {
+		switch {
+		case r == '"':
+			inQuotes = !inQuotes
+			tok.WriteRune(r)
+		case !inQuotes && (r == ' ' || r == '\t'):
+			flush()
+		case !inQuotes && (r == '(' || r == ')'):
+			flush()
+			tokens = append(tokens, string(r))
+		default:
+			tok.WriteRune(r)
+		}
+	}
+	flush()
+	return tokens
+}
+
+type queryParser struct {
+	tokens []string
+	pos    int
+}
+
+func (p *queryParser) peek() (string, bool) {
+	if p.pos >= len(p.tokens) {
+		return "", false
+	}
+	return p.tokens[p.pos], true
+}
+
+func (p *queryParser) parseExpr() (query.Query, error) {
+	parts := make([]query.Query, 0, 2)
+	for {
+		part, err := p.parseAnd()
+		if err != nil {
+			return nil, err
+		}
+		if part != nil {
+			parts = append(parts, part)
+		}
+		if tok, ok := p.peek(); !ok || tok != "OR" {
+			break
+		}
+		p.pos++
+	}
+	switch len(parts) {
+	case 0:
+		return nil, nil
+	case 1:
+		return parts[0], nil
+	default:
+		return query.NewDisjunctionQuery(parts), nil
+	}
+}
+
+func (p *queryParser) parseAnd() (query.Query, error) {
+	units := make([]query.Query, 0, 2)
+	words := make([]string, 0, 4)
+
+	flushWords := func() error {
+		if len(words) == 0 {
+			return nil
+		}
+		built, err := buildGroup(strings.Join(words, " "))
+		if err != nil {
+			return err
+		}
+		if built != nil {
+			units = append(units, built)
+		}
+		words = words[:0]
+		return nil
+	}
+
+	for {
+		tok, ok := p.peek()
+		if !ok || tok == "OR" || tok == ")" {
+			break
+		}
+		if tok == "(" {
+			if err := flushWords(); err != nil {
+				return nil, err
+			}
+			p.pos++
+			sub, err := p.parseExpr()
+			if err != nil {
+				return nil, err
+			}
+			if closing, ok := p.peek(); !ok || closing != ")" {
+				return nil, fmt.Errorf("invalid query: missing closing parenthesis")
+			}
+			p.pos++
+			if sub != nil {
+				units = append(units, sub)
+			}
+			continue
+		}
+		words = append(words, tok)
+		p.pos++
+	}
+	if err := flushWords(); err != nil {
+		return nil, err
+	}
+
+	switch len(units) {
+	case 0:
+		return nil, nil
+	case 1:
+		return units[0], nil
+	default:
+		return query.NewConjunctionQuery(units), nil
+	}
+}
+
+// buildGroup builds one AND group: wildcard tokens plus the query string
+// parser output with all terms required.
+func buildGroup(group string) (query.Query, error) {
+	qs := make([]query.Query, 0, 2)
+	rest, wildcards := extractWildcards(group)
+	if rest != "" {
+		parsed, err := query.NewQueryStringQuery(rest).Parse()
+		if err != nil {
+			return nil, fmt.Errorf("invalid query: %w", err)
+		}
+		qs = append(qs, requireAllTerms(parsed))
+	}
+	qs = append(qs, wildcards...)
+	switch len(qs) {
+	case 0:
+		return nil, nil
+	case 1:
+		return qs[0], nil
+	default:
+		return query.NewConjunctionQuery(qs), nil
+	}
 }
 
 // extractWildcards pulls tokens containing * or ? out of the query string

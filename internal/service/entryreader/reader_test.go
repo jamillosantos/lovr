@@ -149,6 +149,62 @@ func TestReader_Search(t *testing.T) {
 		assert.Equal(t, "message number2", got.Entries[0].Message)
 	})
 
+	t.Run("should combine groups with OR", func(t *testing.T) {
+		got, err := reader.Search(ctx, entryreader.SearchRequest{
+			Query: "level:error OR message:number0",
+		})
+		require.NoError(t, err)
+		assert.Len(t, got.Entries, 2)
+
+		// Each OR side keeps AND semantics internally.
+		got, err = reader.Search(ctx, entryreader.SearchRequest{
+			Query: "level:info route:/api/v1/login OR level:error",
+		})
+		require.NoError(t, err)
+		assert.Len(t, got.Entries, 2)
+
+		// Quoted phrases containing OR are not split.
+		got, err = reader.Search(ctx, entryreader.SearchRequest{
+			Query: `message:"number0 OR number1"`,
+		})
+		require.NoError(t, err)
+		assert.Empty(t, got.Entries)
+	})
+
+	t.Run("should honor parentheses for precedence", func(t *testing.T) {
+		// (error OR info) AND number0: the group matches everything, the
+		// message narrows it to the single number0 entry.
+		got, err := reader.Search(ctx, entryreader.SearchRequest{
+			Query: "(level:error OR level:info) message:number0",
+		})
+		require.NoError(t, err)
+		require.Len(t, got.Entries, 1)
+		assert.Equal(t, "message number0", got.Entries[0].Message)
+
+		// Without parentheses OR binds looser: error OR (info AND number0).
+		got, err = reader.Search(ctx, entryreader.SearchRequest{
+			Query: "level:error OR level:info message:number0",
+		})
+		require.NoError(t, err)
+		assert.Len(t, got.Entries, 2)
+
+		// Nested groups.
+		got, err = reader.Search(ctx, entryreader.SearchRequest{
+			Query: "((level:error OR level:info) message:number1)",
+		})
+		require.NoError(t, err)
+		require.Len(t, got.Entries, 1)
+		assert.Equal(t, "message number1", got.Entries[0].Message)
+	})
+
+	t.Run("should fail on unbalanced parentheses", func(t *testing.T) {
+		_, err := reader.Search(ctx, entryreader.SearchRequest{Query: "(level:error"})
+		assert.Error(t, err)
+
+		_, err = reader.Search(ctx, entryreader.SearchRequest{Query: "level:error)"})
+		assert.Error(t, err)
+	})
+
 	t.Run("should list entries having a key via _exists_", func(t *testing.T) {
 		got, err := reader.Search(ctx, entryreader.SearchRequest{Query: "_exists_:route"})
 		require.NoError(t, err)

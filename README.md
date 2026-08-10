@@ -150,6 +150,8 @@ must match):
 | `status:>499`               | numeric ranges (`>`, `>=`, `<`, `<=`)|
 | `message:*onnect*`          | wildcards match inside words         |
 | `_exists_:user_id`          | entries having a key (alias for `user_id:*`) |
+| `level:error OR level:fatal`| `OR` combines alternatives (uppercase)       |
+| `(level:error OR level:fatal) service:billing` | parentheses group for precedence |
 
 The UI (bun + React + Tailwind) lives in `ui/` and is embedded into the
 binary when building with the `ui` tag:
