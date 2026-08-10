@@ -149,6 +149,23 @@ func TestReader_Search(t *testing.T) {
 		assert.Equal(t, "message number2", got.Entries[0].Message)
 	})
 
+	t.Run("should list entries having a key via _exists_", func(t *testing.T) {
+		got, err := reader.Search(ctx, entryreader.SearchRequest{Query: "_exists_:route"})
+		require.NoError(t, err)
+		assert.Len(t, got.Entries, 3)
+
+		got, err = reader.Search(ctx, entryreader.SearchRequest{Query: "_exists_:nope"})
+		require.NoError(t, err)
+		assert.Empty(t, got.Entries)
+
+		// Negated: entries without the key.
+		got, err = reader.Search(ctx, entryreader.SearchRequest{
+			Query: "field1:value1 -_exists_:nope",
+		})
+		require.NoError(t, err)
+		assert.Len(t, got.Entries, 3)
+	})
+
 	t.Run("should list searchable fields without internal ones", func(t *testing.T) {
 		fields, err := reader.Fields(ctx)
 		require.NoError(t, err)

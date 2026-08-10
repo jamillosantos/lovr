@@ -181,8 +181,16 @@ func extractWildcards(q string) (string, []query.Query) {
 	var wildcards []query.Query
 
 	for _, token := range tokens {
+		// _exists_:key is sugar for key:* (any value indexed for the key).
+		exists := false
+		if rest, ok := strings.CutPrefix(strings.TrimLeft(token, "+-"), "_exists_:"); ok && rest != "" {
+			modifier := strings.TrimSuffix(token, "_exists_:"+rest)
+			token = modifier + rest + ":*"
+			exists = true
+		}
+
 		// Quoted phrases are left for the query string parser.
-		if !strings.ContainsAny(token, "*?") || strings.Contains(token, `"`) {
+		if !exists && (!strings.ContainsAny(token, "*?") || strings.Contains(token, `"`)) {
 			kept = append(kept, token)
 			continue
 		}

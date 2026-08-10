@@ -14,6 +14,7 @@ const examples: [string, string][] = [
 	["-level:debug", "exclude matches"],
 	["status:>499", "numeric ranges (>, >=, <, <=)"],
 	["message:*onnect*", "wildcards match inside words"],
+	["_exists_:user_id", "entries having a key (alias for user_id:*)"],
 ];
 
 export function SearchHelp() {
