@@ -301,6 +301,15 @@
 .column-selector {
 	@apply max-h-96 overflow-y-auto;
 }
+.column-selector-filter {
+	@apply relative px-1 py-1;
+}
+.column-selector-filter .field-filter-icon {
+	@apply left-3.5;
+}
+.column-selector-empty {
+	@apply font-normal text-muted-foreground;
+}
 .search-help {
 	@apply w-[30rem] max-w-[90vw];
 }

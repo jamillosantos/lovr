@@ -1,4 +1,4 @@
-import { Columns3 } from "lucide-react";
+import { Columns3, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,6 +9,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import { fetchFields } from "@/lib/api.ts";
 import { DEFAULT_COLUMNS } from "@/lib/query.ts";
 
@@ -20,6 +21,7 @@ export function ColumnSelector({
 	onChange: (columns: string[]) => void;
 }) {
 	const [fields, setFields] = useState<string[]>([]);
+	const [filter, setFilter] = useState("");
 
 	useEffect(() => {
 		const abort = new AbortController();
@@ -33,6 +35,10 @@ export function ColumnSelector({
 		...DEFAULT_COLUMNS,
 		...fields.filter((f) => !DEFAULT_COLUMNS.includes(f)),
 	];
+	const needle = filter.trim().toLowerCase();
+	const visible = needle
+		? available.filter((c) => c.toLowerCase().includes(needle))
+		: available;
 
 	const toggle = (column: string) => {
 		const next = columns.includes(column)
@@ -42,7 +48,7 @@ export function ColumnSelector({
 	};
 
 	return (
-		<DropdownMenu>
+		<DropdownMenu onOpenChange={() => setFilter("")}>
 			<DropdownMenuTrigger asChild>
 				<Button variant="outline" size="sm" aria-label="Choose columns">
 					<Columns3 />
@@ -51,8 +57,25 @@ export function ColumnSelector({
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end" className="column-selector">
 				<DropdownMenuLabel>Columns</DropdownMenuLabel>
+				<div className="column-selector-filter">
+					<Search className="field-filter-icon" />
+					<Input
+						autoFocus
+						className="field-filter-input"
+						placeholder="Filter columns…"
+						value={filter}
+						onChange={(event) => setFilter(event.target.value)}
+						// Keep typing from triggering the menu's typeahead focus.
+						onKeyDown={(event) => event.stopPropagation()}
+					/>
+				</div>
 				<DropdownMenuSeparator />
-				{available.map((column) => (
+				{visible.length === 0 && (
+					<DropdownMenuLabel className="column-selector-empty">
+						No columns match.
+					</DropdownMenuLabel>
+				)}
+				{visible.map((column) => (
 					<DropdownMenuCheckboxItem
 						checked={columns.includes(column)}
 						disabled={columns.includes(column) && columns.length === 1}
