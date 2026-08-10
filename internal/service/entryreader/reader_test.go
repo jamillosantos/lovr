@@ -197,6 +197,54 @@ func TestReader_Search(t *testing.T) {
 		assert.Equal(t, "message number1", got.Entries[0].Message)
 	})
 
+	t.Run("should support field value lists as in-queries", func(t *testing.T) {
+		got, err := reader.Search(ctx, entryreader.SearchRequest{
+			Query: "level:(error OR info)",
+		})
+		require.NoError(t, err)
+		assert.Len(t, got.Entries, 3)
+
+		// Quoted items with spaces.
+		got, err = reader.Search(ctx, entryreader.SearchRequest{
+			Query: `message:("message number0" OR number1)`,
+		})
+		require.NoError(t, err)
+		assert.Len(t, got.Entries, 2)
+
+		// Wildcard items.
+		got, err = reader.Search(ctx, entryreader.SearchRequest{
+			Query: "message:(number0 OR *umber1*)",
+		})
+		require.NoError(t, err)
+		assert.Len(t, got.Entries, 2)
+
+		// Negated list excludes all values.
+		got, err = reader.Search(ctx, entryreader.SearchRequest{
+			Query: "field1:value1 -level:(error OR info)",
+		})
+		require.NoError(t, err)
+		assert.Empty(t, got.Entries)
+
+		// Combines with other terms (AND).
+		got, err = reader.Search(ctx, entryreader.SearchRequest{
+			Query: "level:(error OR info) route:/api/v1/login",
+		})
+		require.NoError(t, err)
+		assert.Len(t, got.Entries, 2)
+	})
+
+	t.Run("should fail on malformed value lists", func(t *testing.T) {
+		for _, q := range []string{
+			"level:(error fatal)",
+			"level:(error OR)",
+			"level:()",
+			"level:(error",
+		} {
+			_, err := reader.Search(ctx, entryreader.SearchRequest{Query: q})
+			assert.Error(t, err, "query %q should fail", q)
+		}
+	})
+
 	t.Run("should fail on unbalanced parentheses", func(t *testing.T) {
 		_, err := reader.Search(ctx, entryreader.SearchRequest{Query: "(level:error"})
 		assert.Error(t, err)

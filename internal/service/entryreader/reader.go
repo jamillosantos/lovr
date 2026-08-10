@@ -224,10 +224,79 @@ type queryParser struct {
 }
 
 func (p *queryParser) peek() (string, bool) {
-	if p.pos >= len(p.tokens) {
+	return p.peekAt(0)
+}
+
+func (p *queryParser) peekAt(offset int) (string, bool) {
+	if p.pos+offset >= len(p.tokens) {
 		return "", false
 	}
-	return p.tokens[p.pos], true
+	return p.tokens[p.pos+offset], true
+}
+
+// parseValueGroup parses field:(a OR b OR "c d") — an "in" list expanding to
+// a disjunction of field:value terms. A leading - excludes the whole list.
+func (p *queryParser) parseValueGroup(fieldTok string) (query.Query, error) {
+	p.pos += 2 // consume "field:" and "("
+
+	field := fieldTok
+	negated := false
+	if strings.HasPrefix(field, "-") {
+		negated = true
+		field = field[1:]
+	} else if strings.HasPrefix(field, "+") {
+		field = field[1:]
+	}
+
+	items := make([]query.Query, 0, 2)
+	expectValue := true
+	for {
+		tok, ok := p.peek()
+		if !ok {
+			return nil, fmt.Errorf("invalid query: missing closing parenthesis in %svalue list", fieldTok)
+		}
+		if tok == ")" {
+			p.pos++
+			break
+		}
+		if tok == "OR" {
+			if expectValue {
+				return nil, fmt.Errorf("invalid query: unexpected OR in %s value list", field)
+			}
+			p.pos++
+			expectValue = true
+			continue
+		}
+		if !expectValue {
+			return nil, fmt.Errorf("invalid query: expected OR between %s values", field)
+		}
+		if tok == "(" {
+			return nil, fmt.Errorf("invalid query: nested parentheses in %s value list", field)
+		}
+		item, err := buildGroup(field + tok)
+		if err != nil {
+			return nil, err
+		}
+		if item != nil {
+			items = append(items, item)
+		}
+		expectValue = false
+		p.pos++
+	}
+	if len(items) == 0 || expectValue {
+		return nil, fmt.Errorf("invalid query: empty or dangling %s value list", field)
+	}
+
+	var group query.Query
+	if len(items) == 1 {
+		group = items[0]
+	} else {
+		group = query.NewDisjunctionQuery(items)
+	}
+	if negated {
+		return query.NewBooleanQuery(nil, nil, []query.Query{group}), nil
+	}
+	return group, nil
 }
 
 func (p *queryParser) parseExpr() (query.Query, error) {
@@ -296,6 +365,19 @@ func (p *queryParser) parseAnd() (query.Query, error) {
 				units = append(units, sub)
 			}
 			continue
+		}
+		if strings.HasSuffix(tok, ":") && len(tok) > 1 {
+			if next, ok := p.peekAt(1); ok && next == "(" {
+				if err := flushWords(); err != nil {
+					return nil, err
+				}
+				group, err := p.parseValueGroup(tok)
+				if err != nil {
+					return nil, err
+				}
+				units = append(units, group)
+				continue
+			}
 		}
 		words = append(words, tok)
 		p.pos++
