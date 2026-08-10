@@ -192,9 +192,6 @@
 	}
 
 	/* Time filter */
-	.time-filter {
-		@apply flex w-auto gap-3 p-3;
-	}
 	.time-filter-presets {
 		@apply flex w-36 flex-col gap-0.5;
 	}
@@ -203,9 +200,6 @@
 	}
 	.time-filter-preset-active {
 		@apply bg-accent text-accent-foreground;
-	}
-	.time-filter-separator {
-		@apply h-auto!;
 	}
 	.time-filter-custom {
 		@apply flex flex-col gap-2;
@@ -448,6 +442,12 @@
 }
 .search-help {
 	@apply w-[30rem] max-w-[90vw];
+}
+.time-filter {
+	@apply flex w-auto max-w-[95vw] gap-3 overflow-x-auto p-3;
+}
+.time-filter-separator {
+	@apply h-auto!;
 }
 .field-filter-input {
 	@apply h-8 pl-8 font-mono text-xs;
