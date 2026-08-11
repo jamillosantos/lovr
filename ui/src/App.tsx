@@ -20,16 +20,26 @@ import {
 	stateURL,
 	type URLState,
 } from "@/lib/query.ts";
+import { useSettings } from "@/lib/settings.tsx";
 import type { TimeRange } from "@/lib/timerange.ts";
 
 export function App() {
+	const { settings } = useSettings();
 	const [initialState] = useState(() =>
 		stateFromSearch(window.location.search),
 	);
 	const [queryInput, setQueryInput] = useState(initialState.q);
 	const [query, setQuery] = useState(initialState.q);
 	const [columns, setColumns] = useState(initialState.cols);
-	const [range, setRange] = useState<TimeRange>(initialState.range);
+	const [range, setRange] = useState<TimeRange>(() => {
+		if (initialState.range !== null) {
+			return initialState.range;
+		}
+		// No range in the URL: apply the configured default.
+		return settings.defaultRange !== "all"
+			? { preset: settings.defaultRange }
+			: null;
+	});
 	const [groupBy, setGroupBy] = useState(initialState.groupBy);
 	const [refresh, setRefresh] = useState(0);
 	const [selected, setSelected] = useState<Entry | undefined>();
@@ -178,7 +188,12 @@ export function App() {
 					entries={entries}
 					exhausted={exhausted}
 					loadingOlder={loadingOlder}
-					onEndReached={paused ? undefined : loadOlder}
+					onEndReached={loadOlder}
+					onScrolledAway={(scrolled) => {
+						if (settings.autoPauseOnScroll) {
+							setPaused(scrolled);
+						}
+					}}
 					onSelect={setSelected}
 					selectedID={selectedEntry?.$id}
 				/>

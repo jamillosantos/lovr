@@ -14,11 +14,11 @@ import {
 	type HistogramResponse,
 } from "@/lib/api.ts";
 import { formatShortPoint, formatTooltipTime } from "@/lib/datetime.ts";
+import { canonicalLevel } from "@/lib/levels.ts";
 import { useSettings } from "@/lib/settings.tsx";
 import { resolveRange, type TimeRange } from "@/lib/timerange.ts";
 
 const CHART_HEIGHT = 96;
-const REFRESH_MS = 10_000;
 const SEGMENT_GAP = 2;
 const BAR_GAP = 2;
 
@@ -34,9 +34,14 @@ const LEVEL_COLORS: Record<string, string> = {
 // groupColor keeps color bound to the group name (never its rank): levels map
 // to their semantic hues, other values to the categorical palette by the
 // group's position in the alphabetically sorted set.
-function groupColor(group: string, groupBy: string, sorted: string[]): string {
+function groupColor(
+	group: string,
+	groupBy: string,
+	sorted: string[],
+	aliases: Record<string, string>,
+): string {
 	if (groupBy === "level") {
-		return LEVEL_COLORS[group] ?? "var(--chart-cat-0)";
+		return LEVEL_COLORS[canonicalLevel(group, aliases)] ?? "var(--chart-cat-0)";
 	}
 	const index = sorted.indexOf(group);
 	return `var(--chart-cat-${((index % 6) + 6) % 6})`;
@@ -135,13 +140,21 @@ export function Histogram({
 				.catch(() => {});
 		};
 		load();
-		const timer = setInterval(load, REFRESH_MS);
+		const timer = setInterval(load, settings.histogramRefreshSec * 1000);
 		return () => {
 			abort.abort();
 			clearInterval(timer);
 		};
 		// biome-ignore lint/correctness/useExhaustiveDependencies: range keyed by value
-	}, [query, rangeKey, refresh, paused, groupBy, width]);
+	}, [
+		query,
+		rangeKey,
+		refresh,
+		paused,
+		groupBy,
+		width,
+		settings.histogramRefreshSec,
+	]);
 
 	const buckets = data?.buckets ?? [];
 	const groups = data?.groups ?? [];
@@ -211,6 +224,26 @@ export function Histogram({
 						}}
 						width={width}
 					>
+						<defs>
+							<pattern
+								height="5"
+								id="hatch-0"
+								patternTransform="rotate(45)"
+								patternUnits="userSpaceOnUse"
+								width="5"
+							>
+								<line className="histogram-hatch" x1="0" x2="0" y1="0" y2="5" />
+							</pattern>
+							<pattern
+								height="5"
+								id="hatch-1"
+								patternTransform="rotate(135)"
+								patternUnits="userSpaceOnUse"
+								width="5"
+							>
+								<line className="histogram-hatch" x1="0" x2="0" y1="0" y2="5" />
+							</pattern>
+						</defs>
 						{hover !== null && drag === null && (
 							<rect
 								className="histogram-hover-band"
@@ -248,21 +281,47 @@ export function Histogram({
 										groups.indexOf(g2) <= groups.indexOf(group) ||
 										(bucket.counts?.[g2] ?? 0) === 0,
 								);
-								const el = isTop ? (
-									<path
-										d={roundedTopBar(x, y, barWidth, h, 3)}
-										fill={groupColor(group, groupBy, sortedGroups)}
-										key={group}
-									/>
-								) : (
-									<rect
-										fill={groupColor(group, groupBy, sortedGroups)}
-										height={h}
-										key={group}
-										width={barWidth}
-										x={x}
-										y={y}
-									/>
+								const fill = groupColor(
+									group,
+									groupBy,
+									sortedGroups,
+									settings.levelAliases,
+								);
+								const texture = settings.chartTextures
+									? `url(#hatch-${groups.indexOf(group) % 2})`
+									: null;
+								const el = (
+									<g key={group}>
+										{isTop ? (
+											<path
+												d={roundedTopBar(x, y, barWidth, h, 3)}
+												fill={fill}
+											/>
+										) : (
+											<rect
+												fill={fill}
+												height={h}
+												width={barWidth}
+												x={x}
+												y={y}
+											/>
+										)}
+										{texture &&
+											(isTop ? (
+												<path
+													d={roundedTopBar(x, y, barWidth, h, 3)}
+													fill={texture}
+												/>
+											) : (
+												<rect
+													fill={texture}
+													height={h}
+													width={barWidth}
+													x={x}
+													y={y}
+												/>
+											))}
+									</g>
 								);
 								yBottom = y - SEGMENT_GAP;
 								return el;
@@ -285,7 +344,12 @@ export function Histogram({
 								<span
 									className="histogram-swatch"
 									style={{
-										background: groupColor(group, groupBy, sortedGroups),
+										background: groupColor(
+											group,
+											groupBy,
+											sortedGroups,
+											settings.levelAliases,
+										),
 									}}
 								/>
 								<span className="histogram-tooltip-label">{group}</span>
@@ -311,7 +375,12 @@ export function Histogram({
 								<span
 									className="histogram-swatch"
 									style={{
-										background: groupColor(group, groupBy, sortedGroups),
+										background: groupColor(
+											group,
+											groupBy,
+											sortedGroups,
+											settings.levelAliases,
+										),
 									}}
 								/>
 								{group}

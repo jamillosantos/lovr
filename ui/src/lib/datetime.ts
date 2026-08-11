@@ -27,6 +27,15 @@ function parts(
 	return out;
 }
 
+export interface FormatOptions {
+	/** 12-hour clock with AM/PM suffix. */
+	hour12?: boolean;
+	/** Omit the date part for entries from today. */
+	hideDateToday?: boolean;
+	/** Include millisecond precision. */
+	subsecond?: boolean;
+}
+
 const BASE: Intl.DateTimeFormatOptions = {
 	year: "numeric",
 	month: "2-digit",
@@ -43,16 +52,59 @@ function h(value: string): string {
 	return value === "24" ? "00" : value;
 }
 
-// formatListTimestamp: MM-dd HH:mm:ss.SSS
-export function formatListTimestamp(iso: string, timezone: string): string {
-	const p = parts(iso, timezone, BASE);
-	return `${p.month}-${p.day} ${h(p.hour ?? "")}:${p.minute}:${p.second}.${p.fractionalSecond}`;
+function timeOf(
+	p: Record<string, string>,
+	{ hour12 = false, subsecond = true }: FormatOptions,
+): string {
+	let out = `${h(p.hour ?? "")}:${p.minute}:${p.second}`;
+	if (subsecond) {
+		out += `.${p.fractionalSecond}`;
+	}
+	if (hour12 && p.dayPeriod) {
+		out += ` ${p.dayPeriod}`;
+	}
+	return out;
+}
+
+// isToday reports whether the instant falls on today's date in the timezone.
+function isToday(iso: string, timezone: string, now: () => Date): boolean {
+	const opts: Intl.DateTimeFormatOptions = {
+		year: "numeric",
+		month: "2-digit",
+		day: "2-digit",
+	};
+	const a = parts(iso, timezone, opts);
+	const b = parts(now().toISOString(), timezone, opts);
+	return a.year === b.year && a.month === b.month && a.day === b.day;
+}
+
+// formatListTimestamp: MM-dd HH:mm:ss.SSS (parts subject to options).
+export function formatListTimestamp(
+	iso: string,
+	timezone: string,
+	options: FormatOptions = {},
+	now: () => Date = () => new Date(),
+): string {
+	const p = parts(iso, timezone, { ...BASE, hour12: options.hour12 ?? false });
+	const time = timeOf(p, options);
+	if (options.hideDateToday && isToday(iso, timezone, now)) {
+		return time;
+	}
+	return `${p.month}-${p.day} ${time}`;
 }
 
 // formatFullTimestamp: yyyy-MM-dd HH:mm:ss.SSS <offset>
-export function formatFullTimestamp(iso: string, timezone: string): string {
-	const p = parts(iso, timezone, { ...BASE, timeZoneName: "shortOffset" });
-	return `${p.year}-${p.month}-${p.day} ${h(p.hour ?? "")}:${p.minute}:${p.second}.${p.fractionalSecond} ${p.timeZoneName}`;
+export function formatFullTimestamp(
+	iso: string,
+	timezone: string,
+	options: FormatOptions = {},
+): string {
+	const p = parts(iso, timezone, {
+		...BASE,
+		hour12: options.hour12 ?? false,
+		timeZoneName: "shortOffset",
+	});
+	return `${p.year}-${p.month}-${p.day} ${timeOf(p, options)} ${p.timeZoneName}`;
 }
 
 // formatShortPoint: MMM d HH:mm (chart axis / range labels)

@@ -25,16 +25,22 @@ function Cell({
 	column,
 	entry,
 	timezone,
+	formatOptions,
 }: {
 	column: string;
 	entry: Entry;
 	timezone: string;
+	formatOptions: {
+		hour12: boolean;
+		hideDateToday: boolean;
+		subsecond: boolean;
+	};
 }) {
 	switch (column) {
 		case "timestamp":
 			return (
 				<time className="log-row-time">
-					{formatListTimestamp(entry.timestamp, timezone)}
+					{formatListTimestamp(entry.timestamp, timezone, formatOptions)}
 				</time>
 			);
 		case "level":
@@ -64,6 +70,7 @@ export function LogList({
 	selectedID,
 	onSelect,
 	onEndReached,
+	onScrolledAway,
 	loadingOlder,
 	exhausted,
 }: {
@@ -72,13 +79,44 @@ export function LogList({
 	selectedID?: string;
 	onSelect: (entry: Entry) => void;
 	onEndReached?: () => void;
+	/** Reports whether the user scrolled away from the top. */
+	onScrolledAway?: (scrolled: boolean) => void;
 	loadingOlder?: boolean;
 	exhausted?: boolean;
 }) {
 	const { settings } = useSettings();
+	const containerRef = useRef<HTMLDivElement>(null);
 	const sentinelRef = useRef<HTMLDivElement>(null);
 	const onEndReachedRef = useRef(onEndReached);
 	onEndReachedRef.current = onEndReached;
+	const onScrolledAwayRef = useRef(onScrolledAway);
+	onScrolledAwayRef.current = onScrolledAway;
+
+	const viewport = () =>
+		containerRef.current?.querySelector<HTMLElement>(
+			"[data-slot=scroll-area-viewport]",
+		) ?? null;
+
+	// Track scrolling away from the top (auto-pause) and snap back to the
+	// newest entries when follow mode is on.
+	useEffect(() => {
+		const el = viewport();
+		if (!el) {
+			return;
+		}
+		const onScroll = () => {
+			onScrolledAwayRef.current?.(el.scrollTop > 50);
+		};
+		el.addEventListener("scroll", onScroll, { passive: true });
+		return () => el.removeEventListener("scroll", onScroll);
+	}, [entries.length > 0]);
+
+	const newestID = entries[0]?.$id;
+	useEffect(() => {
+		if (settings.followMode) {
+			viewport()?.scrollTo({ top: 0 });
+		}
+	}, [newestID, settings.followMode]);
 
 	useEffect(() => {
 		const sentinel = sentinelRef.current;
@@ -102,8 +140,20 @@ export function LogList({
 		return <div className="log-empty">Waiting for log entries…</div>;
 	}
 
+	// Timestamp column width tracks the format: date(6) + hh:mm:ss(8) +
+	// optional .SSS(4) + optional AM/PM(3).
+	const tsWidth = 14 + (settings.subsecond ? 4 : 0) + (settings.hour12 ? 3 : 0);
+
 	return (
-		<div className="log-container">
+		<div
+			className={cn(
+				"log-container",
+				settings.density === "compact" && "log-density-compact",
+				settings.wrapMessages && "log-wrap-messages",
+			)}
+			ref={containerRef}
+			style={{ "--ts-width": `${tsWidth}ch` } as React.CSSProperties}
+		>
 			<div className="log-header">
 				{columns.map((column) => (
 					<span className={columnClass(column)} key={column}>
@@ -126,6 +176,7 @@ export function LogList({
 									<Cell
 										column={column}
 										entry={entry}
+										formatOptions={settings}
 										key={column}
 										timezone={settings.timezone}
 									/>

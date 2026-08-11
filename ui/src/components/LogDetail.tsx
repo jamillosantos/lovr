@@ -251,7 +251,11 @@ export function LogDetail({
 					<div className="detail-header-row">
 						<LevelBadge level={entry.level} />
 						<time className="detail-time">
-							{formatFullTimestamp(entry.timestamp, settings.timezone)}
+							{formatFullTimestamp(
+								entry.timestamp,
+								settings.timezone,
+								settings,
+							)}
 						</time>
 					</div>
 					<p className="detail-message">{entry.message}</p>

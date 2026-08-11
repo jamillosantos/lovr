@@ -2,11 +2,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { wsURL } from "@/config.ts";
 import type { BatchEntries, Entry } from "@/domain/models.ts";
 import { searchEntries } from "@/lib/api.ts";
-import { mergeLive, mergeOlder } from "@/lib/entries.ts";
+import { MAX_ENTRIES, mergeLive, mergeOlder } from "@/lib/entries.ts";
+import { useSettings } from "@/lib/settings.tsx";
 import { resolveRange, type TimeRange } from "@/lib/timerange.ts";
 
 const RECONNECT_DELAY_MS = 1000;
-const HISTORY_PAGE_SIZE = 100;
 
 export type ConnectionState = "connecting" | "connected" | "closed";
 
@@ -35,6 +35,9 @@ export function useLiveEntries(
 	range: TimeRange,
 	refresh: number,
 ): LiveEntries {
+	const { settings } = useSettings();
+	const pageSizeRef = useRef(settings.historyPageSize);
+	pageSizeRef.current = settings.historyPageSize;
 	const [entries, setEntries] = useState<Entry[]>([]);
 	const [frozen, setFrozen] = useState<Entry[] | null>(null);
 	const [error, setError] = useState<string | null>(null);
@@ -102,7 +105,7 @@ export function useLiveEntries(
 				}
 				setError(null);
 				const incoming = batch.entries;
-				setEntries((current) => mergeLive(current, incoming));
+				setEntries((current) => mergeLive(current, incoming, MAX_ENTRIES));
 			};
 
 			ws.onclose = () => {
@@ -149,19 +152,22 @@ export function useLiveEntries(
 			q: query,
 			since: windowRef.current.since,
 			until: oldest.timestamp,
-			pageSize: HISTORY_PAGE_SIZE,
+			pageSize: pageSizeRef.current,
 		})
 			.then((page) => {
 				if (generation !== generationRef.current) {
 					return;
 				}
 				setEntries((cur) => {
-					const merged = mergeOlder(cur, page);
+					const merged = mergeOlder(cur, page, MAX_ENTRIES);
 					if (merged.length === cur.length) {
 						setExhausted(true);
 					}
 					return merged;
 				});
+				// Keep a paused (frozen) view growing with history pages so
+				// scrolling back works while paused.
+				setFrozen((f) => (f ? mergeOlder(f, page, MAX_ENTRIES) : f));
 			})
 			.catch((e) => {
 				if (generation === generationRef.current) {

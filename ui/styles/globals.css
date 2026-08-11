@@ -236,6 +236,11 @@
 	.histogram-hover-band {
 		@apply fill-muted/60;
 	}
+	.histogram-hatch {
+		stroke: var(--background);
+		stroke-opacity: 0.5;
+		stroke-width: 1.5;
+	}
 	.histogram-tooltip {
 		@apply pointer-events-none absolute top-2 z-40 w-44 rounded-md border bg-popover p-2 text-popover-foreground shadow-md;
 	}
@@ -291,6 +296,45 @@
 	}
 
 	/* Settings */
+	.settings-body {
+		@apply flex max-h-[70vh] flex-col gap-3;
+	}
+	.settings-tabs {
+		@apply w-full;
+	}
+	.settings-tab {
+		@apply flex min-h-64 flex-col gap-2.5 overflow-y-auto pr-1;
+	}
+	.settings-section-title {
+		@apply mb-2 font-medium text-muted-foreground text-xs uppercase tracking-wide;
+	}
+	.settings-body section {
+		@apply flex flex-col gap-2;
+	}
+	.settings-toggle {
+		@apply flex cursor-pointer items-center gap-2 text-sm;
+	}
+	.settings-number {
+		@apply flex items-center justify-between gap-3 text-sm;
+	}
+	.settings-number-input {
+		@apply h-8 w-28 text-right;
+	}
+	.settings-options-wrap {
+		@apply flex-wrap;
+	}
+	.settings-aliases {
+		@apply flex flex-col gap-1 text-muted-foreground text-xs;
+	}
+	.settings-aliases-input {
+		@apply rounded-md border bg-transparent p-2 font-mono text-foreground text-xs outline-none focus:ring-1 focus:ring-ring;
+	}
+	.settings-io {
+		@apply flex gap-2 border-t pt-3;
+	}
+	.settings-file {
+		@apply hidden;
+	}
 	.settings-options {
 		@apply flex gap-2;
 	}
@@ -357,13 +401,26 @@
 		@apply w-16 shrink-0;
 	}
 	.log-row-time {
-		@apply w-[18ch] shrink-0 text-muted-foreground tabular-nums;
+		@apply shrink-0 whitespace-nowrap text-muted-foreground tabular-nums;
+		width: var(--ts-width, 18ch);
 	}
 	.log-row-message {
 		@apply flex-1 truncate;
 	}
 	.log-row-field {
 		@apply w-40 shrink-0 truncate text-muted-foreground;
+	}
+	.log-density-compact .log-row {
+		@apply py-0 text-[11px];
+	}
+	.log-density-compact .level-badge {
+		@apply py-0;
+	}
+	.log-wrap-messages .log-row-message {
+		@apply whitespace-pre-wrap break-all;
+	}
+	.log-wrap-messages .log-row {
+		@apply items-start;
 	}
 	.log-list-footer {
 		@apply flex h-10 items-center justify-center gap-2 text-muted-foreground text-xs;
@@ -538,6 +595,12 @@
 }
 .search-help {
 	@apply w-[30rem] max-w-[90vw];
+}
+[data-slot="dialog-overlay"] {
+	@apply backdrop-blur-sm;
+}
+.settings-dialog {
+	@apply max-w-[95vw] sm:max-w-[34rem];
 }
 .time-filter {
 	@apply flex w-auto max-w-[95vw] gap-3 overflow-x-auto p-3;
