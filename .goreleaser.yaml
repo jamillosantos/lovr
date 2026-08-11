@@ -10,6 +10,11 @@ builds:
   - main: ./lovr
     env:
       - CGO_ENABLED=0
+    ldflags:
+      - -s -w
+      - -X github.com/jamillosantos/lovr/cmd.version={{.Version}}
+      - -X github.com/jamillosantos/lovr/cmd.commit={{.Commit}}
+      - -X github.com/jamillosantos/lovr/cmd.date={{.Date}}
     goos:
       - linux
       - darwin
