@@ -34,4 +34,17 @@ jobs:
 
       - run: bun test
 
-      - run: bun run build
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: oven-sh/setup-bun@v2
+
+      - run: go generate ./ui
+
+      - run: go build ./lovr
