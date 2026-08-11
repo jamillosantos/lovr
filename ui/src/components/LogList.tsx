@@ -1,4 +1,4 @@
-import { Loader2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { LevelBadge } from "@/components/LevelBadge.tsx";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -99,16 +99,21 @@ export function LogList({
 	onScrolledAway,
 	loadingOlder,
 	exhausted,
+	sortAsc = false,
+	onToggleSort,
 }: {
 	entries: Entry[];
 	columns: string[];
 	selectedID?: string;
 	onSelect: (entry: Entry) => void;
 	onEndReached?: () => void;
-	/** Reports whether the user scrolled away from the top. */
+	/** Reports whether the user scrolled away from the live edge. */
 	onScrolledAway?: (scrolled: boolean) => void;
 	loadingOlder?: boolean;
 	exhausted?: boolean;
+	/** Oldest first when true; the data itself stays newest-first. */
+	sortAsc?: boolean;
+	onToggleSort?: () => void;
 }) {
 	const { settings, update } = useSettings();
 	const [widths, setWidths] = useState<Record<string, number>>(
@@ -140,18 +145,22 @@ export function LogList({
 			return;
 		}
 		const onScroll = () => {
-			onScrolledAwayRef.current?.(el.scrollTop > 50);
+			const awayFromLiveEdge = sortAsc
+				? el.scrollHeight - el.scrollTop - el.clientHeight > 50
+				: el.scrollTop > 50;
+			onScrolledAwayRef.current?.(awayFromLiveEdge);
 		};
 		el.addEventListener("scroll", onScroll, { passive: true });
 		return () => el.removeEventListener("scroll", onScroll);
-	}, [entries.length > 0]);
+	}, [entries.length > 0, sortAsc]);
 
 	const newestID = entries[0]?.$id;
 	useEffect(() => {
 		if (settings.followMode) {
-			viewport()?.scrollTo({ top: 0 });
+			const el = viewport();
+			el?.scrollTo({ top: sortAsc ? el.scrollHeight : 0 });
 		}
-	}, [newestID, settings.followMode]);
+	}, [newestID, settings.followMode, sortAsc]);
 
 	useEffect(() => {
 		const sentinel = sentinelRef.current;
@@ -169,11 +178,13 @@ export function LogList({
 		);
 		observer.observe(sentinel);
 		return () => observer.disconnect();
-	}, [entries.length > 0]);
+	}, [entries.length > 0, sortAsc]);
 
 	if (entries.length === 0) {
 		return <div className="log-empty">Waiting for log entries…</div>;
 	}
+
+	const rendered = sortAsc ? [...entries].reverse() : entries;
 
 	// Timestamp column width tracks the format: date(6) + hh:mm:ss(8) +
 	// optional .SSS(4) + optional AM/PM(3).
@@ -239,7 +250,14 @@ export function LogList({
 								: undefined
 						}
 					>
-						{column}
+						{column === "timestamp" ? (
+							<button className="log-sort" onClick={onToggleSort} type="button">
+								{column}
+								{sortAsc ? <ArrowUp /> : <ArrowDown />}
+							</button>
+						) : (
+							column
+						)}
 						<span
 							className="col-resize"
 							onDoubleClick={() => resetWidth(column)}
@@ -251,8 +269,14 @@ export function LogList({
 				))}
 			</div>
 			<ScrollArea className="log-scroll">
+				{sortAsc && (
+					<div className="log-list-footer" ref={sentinelRef}>
+						{loadingOlder && <Loader2 className="log-list-spinner" />}
+						{exhausted && <span>End of results</span>}
+					</div>
+				)}
 				<ul className="log-list">
-					{entries.map((entry) => (
+					{rendered.map((entry) => (
 						<li key={entry.$id}>
 							<button
 								className={cn(
@@ -275,10 +299,12 @@ export function LogList({
 						</li>
 					))}
 				</ul>
-				<div className="log-list-footer" ref={sentinelRef}>
-					{loadingOlder && <Loader2 className="log-list-spinner" />}
-					{exhausted && <span>End of results</span>}
-				</div>
+				{!sortAsc && (
+					<div className="log-list-footer" ref={sentinelRef}>
+						{loadingOlder && <Loader2 className="log-list-spinner" />}
+						{exhausted && <span>End of results</span>}
+					</div>
+				)}
 			</ScrollArea>
 		</div>
 	);

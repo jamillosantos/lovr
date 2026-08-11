@@ -45,6 +45,7 @@ export function App() {
 	const [groupBy, setGroupBy] = useState(initialState.groupBy);
 	const [refresh, setRefresh] = useState(0);
 	const [selected, setSelected] = useState<Entry | undefined>();
+	const [sortAsc, setSortAsc] = useState(false);
 
 	const syncURL = (state: URLState, push: boolean) => {
 		const url = stateURL(window.location.pathname, state);
@@ -219,7 +220,9 @@ export function App() {
 						}
 					}}
 					onSelect={setSelected}
+					onToggleSort={() => setSortAsc((v) => !v)}
 					selectedID={selectedEntry?.$id}
+					sortAsc={sortAsc}
 				/>
 				{selectedEntry && (
 					<LogDetail

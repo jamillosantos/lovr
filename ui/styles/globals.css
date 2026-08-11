@@ -431,6 +431,9 @@
 	.log-header-cell {
 		@apply relative;
 	}
+	.log-sort {
+		@apply flex cursor-pointer items-center gap-1 uppercase hover:text-foreground [&_svg]:size-3;
+	}
 	.col-resize {
 		@apply absolute top-0 right-0 h-full w-1.5 cursor-col-resize rounded hover:bg-ring/60;
 	}
