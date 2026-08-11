@@ -270,7 +270,13 @@ export function LogList({
 			</div>
 			<ScrollArea className="log-scroll">
 				{sortAsc && (
-					<div className="log-list-footer" ref={sentinelRef}>
+					<div
+						className={cn(
+							"log-list-footer",
+							!loadingOlder && !exhausted && "log-list-footer-idle",
+						)}
+						ref={sentinelRef}
+					>
 						{loadingOlder && <Loader2 className="log-list-spinner" />}
 						{exhausted && <span>End of results</span>}
 					</div>
@@ -300,7 +306,13 @@ export function LogList({
 					))}
 				</ul>
 				{!sortAsc && (
-					<div className="log-list-footer" ref={sentinelRef}>
+					<div
+						className={cn(
+							"log-list-footer",
+							!loadingOlder && !exhausted && "log-list-footer-idle",
+						)}
+						ref={sentinelRef}
+					>
 						{loadingOlder && <Loader2 className="log-list-spinner" />}
 						{exhausted && <span>End of results</span>}
 					</div>

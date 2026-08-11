@@ -465,6 +465,9 @@
 	.log-list-footer {
 		@apply flex h-10 items-center justify-center gap-2 text-muted-foreground text-xs;
 	}
+	.log-list-footer-idle {
+		@apply h-px;
+	}
 	.log-list-spinner {
 		@apply size-4 animate-spin;
 	}
