@@ -1,8 +1,9 @@
 # dependencies (bun install)
 node_modules
 
-# output
-dist
+# output (keep .gitkeep so go:embed always has a dist/ to embed)
+dist/*
+!dist/.gitkeep
 *.tgz
 
 # code coverage

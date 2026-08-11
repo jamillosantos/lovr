@@ -86,6 +86,8 @@ search for log entries on a modern UI.`,
 		}
 		if uiFS := ui.FS(); uiFS != nil {
 			opts = append(opts, transporthttp.WithUI(uiFS))
+		} else {
+			fmt.Fprintln(os.Stderr, "warning: UI assets were not embedded in this build; serving the API only. Build with `make build` to include the UI.")
 		}
 
 		serviceAPI := transporthttp.New(entryReader, opts...)

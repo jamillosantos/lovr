@@ -45,9 +45,19 @@ EOF
 
 ### Installation
 
+Download a prebuilt binary (with the web UI embedded) from the
+[releases page](https://github.com/jamillosantos/lovr/releases).
+
+Or build from source (requires Go and [bun](https://bun.sh)):
+
 ```
-go install github.com/jamillosantos/lovr/lovr@latest
+git clone https://github.com/jamillosantos/lovr
+cd lovr && make install
 ```
+
+> `go install github.com/jamillosantos/lovr/lovr@latest` still works, but the
+> resulting binary will not include the web UI (the built assets are not
+> committed to the repository), so `lovr web` will serve the API only.
 
 ### Usage
 
@@ -187,16 +197,23 @@ Then open http://127.0.0.1:8080 (change with `--bindaddr`/`-b`).
   density, level aliases, chart behavior and more — exportable to JSON.
 
 The UI (bun + React + Tailwind) lives in `ui/` and is embedded into the
-binary when building with the `ui` tag:
+binary at compile time:
 
 ```
-cd ui && bun install && bun run build && cd ..
-go build -tags ui -o lovr ./lovr
+make build
 ```
 
-Binaries built without the tag still serve the HTTP/websocket API, only
-without the web page. For UI development, run the backend and the bun dev
-server side by side:
+or manually:
+
+```
+go generate ./ui
+go build -o lovr-bin ./lovr
+```
+
+Binaries built without the UI assets present (e.g. a plain `go build` on a
+fresh checkout) still serve the HTTP/websocket API, only without the web
+page. For UI development, run the backend and the bun dev server side by
+side:
 
 ```
 ./yourapp | go run ./lovr web                     # API at 127.0.0.1:8080
