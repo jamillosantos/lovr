@@ -1,39 +1,45 @@
 package processors
 
 import (
+	"context"
+	"errors"
 	"testing"
 
 	"github.com/iancoleman/orderedmap"
 	"github.com/stretchr/testify/require"
 
+	"github.com/jamillosantos/lovr/internal/domain"
 	"github.com/jamillosantos/lovr/internal/service"
 )
 
+type fakeMatcher struct {
+	result bool
+	err    error
+}
+
+func (f fakeMatcher) Match(_ context.Context, _ *domain.Entry) (bool, error) {
+	return f.result, f.err
+}
+
 func TestFilter_Process(t *testing.T) {
-	t.Run("should process the entry", func(t *testing.T) {
-		p, err := NewFilter(`level == "info"`)
-		require.NoError(t, err)
-		e := orderedmap.New()
-		e.Set("level", "info")
-		err = p.Process(nil, e)
-		require.NoError(t, err)
+	entry := orderedmap.New()
+	entry.Set("level", "info")
+
+	t.Run("should pass a matching entry through", func(t *testing.T) {
+		p := NewFilter(fakeMatcher{result: true})
+		require.NoError(t, p.Process(context.Background(), entry))
 	})
 
-	t.Run("should fail when an expression does not return a boolean", func(t *testing.T) {
-		p, err := NewFilter(`level`)
-		require.NoError(t, err)
-		e := orderedmap.New()
-		e.Set("level", "info")
-		err = p.Process(nil, e)
-		require.ErrorIs(t, err, ErrFilterExpressionMustReturnBoolean)
-	})
-
-	t.Run("should skip entry when criteria does not match", func(t *testing.T) {
-		p, err := NewFilter(`level == "info"`)
-		require.NoError(t, err)
-		e := orderedmap.New()
-		e.Set("level", "warning")
-		err = p.Process(nil, e)
+	t.Run("should skip a non-matching entry", func(t *testing.T) {
+		p := NewFilter(fakeMatcher{result: false})
+		err := p.Process(context.Background(), entry)
 		require.ErrorIs(t, err, service.ErrSkipEntry)
+	})
+
+	t.Run("should propagate matcher errors", func(t *testing.T) {
+		wantErr := errors.New("boom")
+		p := NewFilter(fakeMatcher{err: wantErr})
+		err := p.Process(context.Background(), entry)
+		require.ErrorIs(t, err, wantErr)
 	})
 }

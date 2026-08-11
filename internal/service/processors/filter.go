@@ -2,54 +2,33 @@ package processors
 
 import (
 	"context"
-	"errors"
-	"unsafe"
-
-	"github.com/expr-lang/expr"
-	"github.com/expr-lang/expr/vm"
 
 	"github.com/jamillosantos/lovr/internal/domain"
 	"github.com/jamillosantos/lovr/internal/service"
 )
 
-var (
-	ErrFilterExpressionMustReturnBoolean = errors.New("filter expression must return boolean")
-)
+// EntryMatcher reports whether an entry matches a filter expression.
+type EntryMatcher interface {
+	Match(ctx context.Context, entry *domain.Entry) (bool, error)
+}
 
+// Filter skips entries rejected by the matcher.
 type Filter struct {
-	filter string
-	expr   *vm.Program
+	matcher EntryMatcher
 }
 
-func NewFilter(filter string) (*Filter, error) {
-	e, err := expr.Compile(filter)
-	if err != nil {
-		return nil, err
-	}
-
+func NewFilter(matcher EntryMatcher) *Filter {
 	return &Filter{
-		filter: filter,
-		expr:   e,
-	}, nil
+		matcher: matcher,
+	}
 }
 
-type orderedMap struct {
-	keys       []string
-	values     map[string]interface{}
-	escapeHTML bool
-}
-
-func (f *Filter) Process(_ context.Context, entry *domain.Entry) error {
-	x := (*orderedMap)(unsafe.Pointer(entry)) // dirty trick to access the map keys without rebunding the `map[string]interface{}`.
-	output, err := expr.Run(f.expr, x.values)
+func (f *Filter) Process(ctx context.Context, entry *domain.Entry) error {
+	ok, err := f.matcher.Match(ctx, entry)
 	if err != nil {
 		return err
 	}
-	result, ok := output.(bool)
 	if !ok {
-		return ErrFilterExpressionMustReturnBoolean
-	}
-	if !result {
 		return service.ErrSkipEntry
 	}
 	return nil

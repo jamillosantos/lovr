@@ -2,11 +2,13 @@ package http
 
 import (
 	"context"
+	"io/fs"
 	"sync"
 
 	fiberws "github.com/gofiber/contrib/v3/websocket"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
+	"github.com/gofiber/fiber/v3/middleware/static"
 
 	"github.com/jamillosantos/lovr/internal/service/entryreader"
 	"github.com/jamillosantos/lovr/internal/transport/http/websocket"
@@ -14,12 +16,17 @@ import (
 
 type EntryReader interface {
 	Search(ctx context.Context, req entryreader.SearchRequest) (entryreader.SearchResponse, error)
+	Fields(ctx context.Context) ([]string, error)
+	FieldValues(ctx context.Context, field, prefix string, limit int) ([]entryreader.FieldValue, error)
+	Histogram(ctx context.Context, req entryreader.HistogramRequest) (entryreader.HistogramResponse, error)
 }
 
 type API struct {
 	bindAddr string
 	wc       *sync.WaitGroup
 	reader   EntryReader
+	uiFS     fs.FS
+	baseCtx  context.Context
 }
 
 type Option func(*API)
@@ -44,12 +51,11 @@ func (api *API) Start(ctx context.Context) error {
 	})
 
 	go func() {
-		select {
-		case <-ctx.Done():
-			_ = app.Shutdown()
-		}
+		<-ctx.Done()
+		_ = app.Shutdown()
 	}()
 
+	api.baseCtx = ctx
 	api.setupHandlers(app)
 
 	return app.Listen(api.bindAddr, fiber.ListenConfig{
@@ -75,11 +81,24 @@ func (api *API) setupHandlers(app *fiber.App) {
 	})
 
 	app.Get("/entries/search", api.EntriesSearch)
+	app.Get("/entries/histogram", api.EntriesHistogram)
+	app.Get("/entries/fields", api.EntriesFields)
+	app.Get("/entries/fields/:field/values", api.EntriesFieldValues)
 	app.Get("/entries/live", fiberws.New(api.HandleWebsocket))
+
+	if api.uiFS != nil {
+		app.Get("/*", static.New("", static.Config{
+			FS:         api.uiFS,
+			IndexNames: []string{"index.html"},
+		}))
+	}
 }
 
 func (api *API) HandleWebsocket(conn *fiberws.Conn) {
-	ctx := context.Background()
+	ctx := api.baseCtx
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	wsconn := websocket.NewConnection(conn, api.reader)
 	wsconn.Handle(ctx) // Blocks
 }

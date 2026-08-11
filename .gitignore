@@ -4,5 +4,5 @@
 vendor/
 *.exe
 
-ui/
 graphify-out/
+test-logs.jsonl

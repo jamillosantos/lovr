@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>lovr</title>
+    <link rel="stylesheet" href="../styles/globals.css" />
+    <!-- Bun only inlines process.env.BUN_PUBLIC_* vars that are set; this shim
+         keeps unset reads from crashing in the browser. -->
+    <script>
+      globalThis.process ??= { env: {} };
+      let theme = "system";
+      try {
+        theme = JSON.parse(localStorage.getItem("lovr-settings")).theme || "system";
+      } catch {}
+      document.documentElement.classList.toggle(
+        "dark",
+        theme === "dark" ||
+          (theme !== "light" &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches),
+      );
+    </script>
+    <script type="module" src="./frontend.tsx" async></script>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

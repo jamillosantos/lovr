@@ -1,109 +1,249 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import Header from "./components/Header";
-import LogLevel from "./components/Table/LogLevel";
-import Table from "./components/Table/Table";
-import { Entry } from "./domain/models";
-import api from "./service/api";
+import { AlertCircle } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ColumnSelector } from "@/components/ColumnSelector.tsx";
+import { ConnectionStatus } from "@/components/ConnectionStatus.tsx";
+import { Histogram } from "@/components/Histogram.tsx";
+import { LogDetail, type SearchAction } from "@/components/LogDetail.tsx";
+import { LogList } from "@/components/LogList.tsx";
+import { SearchBar } from "@/components/SearchBar.tsx";
+import { SettingsDialog } from "@/components/SettingsDialog.tsx";
+import { ThemeToggle } from "@/components/ThemeToggle.tsx";
+import { TimeFilter } from "@/components/TimeFilter.tsx";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ViewsMenu } from "@/components/ViewsMenu.tsx";
+import type { Entry, Field } from "@/domain/models.ts";
+import { useLiveEntries } from "@/hooks/useLiveEntries.ts";
+import {
+	appendTerm,
+	fieldTerm,
+	stateFromSearch,
+	stateURL,
+	type URLState,
+} from "@/lib/query.ts";
+import { useSettings } from "@/lib/settings.tsx";
+import type { TimeRange } from "@/lib/timerange.ts";
+import type { View } from "@/lib/views.ts";
 
-import "./index.css";
-import { useLocation, useNavigate } from "react-router-dom";
-import QueryString from "qs";
-import DateText from "./components/DateText";
-import SettingsContext, { Settings, SettingsHandler } from "./contexts/Settings";
-import SettingsWindow from "./SettingsWindow";
+export function App() {
+	const { settings, update } = useSettings();
+	const [initialState] = useState(() =>
+		stateFromSearch(window.location.search),
+	);
+	const [queryInput, setQueryInput] = useState(initialState.q);
+	const [query, setQuery] = useState(initialState.q);
+	const [columns, setColumns] = useState(initialState.cols);
+	const [range, setRange] = useState<TimeRange>(() => {
+		if (initialState.range !== null) {
+			return initialState.range;
+		}
+		// No range in the URL: apply the configured default.
+		return settings.defaultRange !== "all"
+			? { preset: settings.defaultRange }
+			: null;
+	});
+	const [groupBy, setGroupBy] = useState(initialState.groupBy);
+	const [refresh, setRefresh] = useState(0);
+	const [selected, setSelected] = useState<Entry | undefined>();
+	const [sortAsc, setSortAsc] = useState(false);
+	const [activeView, setActiveView] = useState<string | null>(null);
 
-const columns = [
-  // {
-  //   Header: "",
-  //   accessor: "level",
-  //   maxWidth: 1,
-  //   Cell: ({ cell: { value } }: any) => (
-  //     <LogLevel className="-ml-1 -mr-3" level={value} />
-  //   ),
-  // },
-  {
-    Header: "Timestamp",
-    accessor: "timestamp",
-    width: 30,
-    className: "bg-red-500",
-    Cell: ({ row, cell: { value } }: any) => {
-      return (
-      <div className="flex">
-        <LogLevel level={row.original.level} />
-        <DateText className="ml-2" value={value} />
-      </div>
-    )},
-  },
-  {
-    Header: "Message",
-    accessor: "message",
-    width: 0,
-  },
-];
+	const syncURL = (state: URLState, push: boolean) => {
+		const url = stateURL(window.location.pathname, state);
+		const current = window.location.pathname + window.location.search;
+		if (url === current) {
+			return;
+		}
+		if (push) {
+			window.history.pushState(null, "", url);
+		} else {
+			window.history.replaceState(null, "", url);
+		}
+	};
 
-function App() {
-  const [logs, setLogs] = React.useState<Entry[]>([]);
-  const [logsCount, setLogsCount] = React.useState(0);
+	const runQuery = (q: string, pushHistory = true) => {
+		setQuery(q);
+		// Bumping the nonce restarts the stream even for an unchanged query.
+		setRefresh((r) => r + 1);
+		if (pushHistory) {
+			syncURL({ q, cols: columns, range, groupBy }, true);
+		}
+	};
 
-  const navigateTo = useNavigate();
+	const changeColumns = (cols: string[]) => {
+		setColumns(cols);
+		syncURL({ q: query, cols, range, groupBy }, false);
+	};
 
-  const { search: searchStr } = useLocation();
-  const qs = useMemo(
-    () => QueryString.parse(searchStr.substring(1)),
-    [searchStr]
-  );
+	const changeRange = (next: TimeRange) => {
+		setRange(next);
+		// The stream restarts via the range key; persist as navigation.
+		syncURL({ q: query, cols: columns, range: next, groupBy }, true);
+	};
 
-  useEffect(() => {
-    (async () => {
-      const r = await api.getLogs({});
-      setLogs(r.entries!);
-      setLogsCount(r.count);
-    })();
-  }, []);
+	const applyView = (view: View) => {
+		setActiveView(view.name);
+		setQueryInput(view.q);
+		setQuery(view.q);
+		setColumns(view.cols);
+		setRange(view.range);
+		setSortAsc(view.sortAsc);
+		setGroupBy(view.groupBy);
+		update({ columnWidths: view.columnWidths });
+		setRefresh((r) => r + 1);
+		syncURL(
+			{ q: view.q, cols: view.cols, range: view.range, groupBy: view.groupBy },
+			true,
+		);
+	};
 
-  const recordSelected = useMemo(
-    () => logs.find((o) => o.$id === qs.$id),
-    [qs.$id, logs]
-  );
+	const changeGroupBy = (next: string) => {
+		setGroupBy(next);
+		syncURL({ q: query, cols: columns, range, groupBy: next }, false);
+	};
 
-  const onSelectHandler = useCallback(
-    (e, row) => {
-      navigateTo({
-        search: QueryString.stringify({ ...qs, $id: row?.$id }),
-      });
-    },
-    [qs, navigateTo]
-  );
+	// Restore the state when navigating browser history.
+	useEffect(() => {
+		const onPopState = () => {
+			const state = stateFromSearch(window.location.search);
+			setQueryInput(state.q);
+			setColumns(state.cols);
+			setRange(state.range);
+			setGroupBy(state.groupBy);
+			runQuery(state.q, false);
+		};
+		window.addEventListener("popstate", onPopState);
+		return () => window.removeEventListener("popstate", onPopState);
+	}, []);
 
-  const [settings, setSettings] = useState<Settings>({
-    timezone: "local",
-  })
+	const searchAction = (field: Field, action: SearchAction) => {
+		let term: string;
+		switch (action) {
+			case "add":
+				term = fieldTerm(field.key, field.value);
+				break;
+			case "exclude":
+				term = `-${fieldTerm(field.key, field.value)}`;
+				break;
+			case "add-key":
+				term = `_exists_:${field.key}`;
+				break;
+			case "exclude-key":
+				term = `-_exists_:${field.key}`;
+				break;
+		}
+		const next = appendTerm(queryInput, term);
+		setQueryInput(next);
+		runQuery(next);
+	};
 
-  const settingsValue = useMemo<SettingsHandler>(() => ({
-    settings: settings,
-    updateSettings: setSettings,
-  }), [settings]);
+	const {
+		entries,
+		connection,
+		error,
+		paused,
+		setPaused,
+		loadOlder,
+		loadingOlder,
+		exhausted,
+		total,
+	} = useLiveEntries(query, range, refresh);
 
-  return (
-    <SettingsContext.Provider value={settingsValue}>
-      <div className="min-h-screen bg-white dark:bg-slate-900">
-        <Header />
-        <main className="p-4">
-          {/* <div className="bg-gray-100 dark:bg-black/50 rounded-t-lg border-b-2 border-b-sky-500  px-4 mb-4 h-[80px]"></div> */}
-          <div className="shadow overflow-hidden bg-transparency-1 border border-transparent border-b-gray-200 dark:border dark:border-transparent rounded-lg">
-            <Table
-              columns={columns}
-              data={logs}
-              count={logsCount}
-              onSelectRecord={onSelectHandler}
-              selected={recordSelected?.$id}
-            />
-          </div>
-        </main>
-      </div>
-      <SettingsWindow />
-    </SettingsContext.Provider>
-  );
+	const selectedEntry = useMemo(
+		() => entries.find((e) => e.$id === selected?.$id) ?? selected,
+		[entries, selected],
+	);
+
+	return (
+		<div className="app-shell">
+			<header className="app-header">
+				<h1 className="app-title">lovr</h1>
+
+				<SearchBar
+					value={queryInput}
+					onChange={setQueryInput}
+					onClear={() => {
+						setQueryInput("");
+						runQuery("");
+					}}
+					onSubmit={() => runQuery(queryInput)}
+				/>
+
+				<TimeFilter onChange={changeRange} range={range} />
+
+				<ColumnSelector columns={columns} onChange={changeColumns} />
+
+				<ViewsMenu
+					currentView={() => ({
+						q: queryInput,
+						range,
+						cols: columns,
+						columnWidths: settings.columnWidths,
+						sortAsc,
+						groupBy,
+					})}
+					onApply={applyView}
+					activeName={activeView}
+					onActiveChange={setActiveView}
+				/>
+
+				<ConnectionStatus
+					connection={connection}
+					count={entries.length}
+					onToggle={() => setPaused(!paused)}
+					paused={paused}
+					total={total}
+				/>
+
+				<SettingsDialog />
+				<ThemeToggle />
+			</header>
+
+			{settings.showChart && (
+				<Histogram
+					groupBy={groupBy}
+					onGroupByChange={changeGroupBy}
+					onRangeSelect={(from, to) => changeRange({ from, to })}
+					paused={paused}
+					query={query}
+					range={range}
+					refresh={refresh}
+				/>
+			)}
+
+			{error && (
+				<Alert variant="destructive" className="error-banner">
+					<AlertCircle />
+					<AlertDescription className="error-banner-text">
+						{error}
+					</AlertDescription>
+				</Alert>
+			)}
+
+			<main className="app-main">
+				<LogList
+					columns={columns}
+					entries={entries}
+					exhausted={exhausted}
+					loadingOlder={loadingOlder}
+					onEndReached={loadOlder}
+					onScrolledAway={(scrolled) => {
+						if (settings.autoPauseOnScroll) {
+							setPaused(scrolled);
+						}
+					}}
+					onSelect={setSelected}
+					onToggleSort={() => setSortAsc((v) => !v)}
+					selectedID={selectedEntry?.$id}
+					sortAsc={sortAsc}
+				/>
+				{selectedEntry && (
+					<LogDetail
+						entry={selectedEntry}
+						onClose={() => setSelected(undefined)}
+						onSearchAction={searchAction}
+					/>
+				)}
+			</main>
+		</div>
+	);
 }
-
-export default App;

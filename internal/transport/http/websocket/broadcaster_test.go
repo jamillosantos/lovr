@@ -171,11 +171,11 @@ func TestConnection_entriesFetcher(t *testing.T) {
 			},
 		}
 
-		mocks.entriesSearcher.EXPECT().Search(ctx, entryreader.SearchRequest{
-			Since: wantSearchQuery.Since,
-			Query: wantSearchQuery.Query,
-		}).Do(func(context.Context, entryreader.SearchRequest) {
-			time.Sleep(time.Millisecond * 200)
+		mocks.entriesSearcher.EXPECT().Search(gomock.Any(), entryreader.SearchRequest{
+			Since:     wantSearchQuery.Since,
+			Query:     wantSearchQuery.Query,
+			PageSize:  pageSize,
+			Ascending: true,
 		}).Return(entryreader.SearchResponse{
 			Entries: []*domain.LogEntry{
 				wantLogEntry,
@@ -191,25 +191,20 @@ func TestConnection_entriesFetcher(t *testing.T) {
 			cancelFunc()
 		}()
 		conn.fetchQuery = wantSearchQuery
+		conn.queryKick <- struct{}{}
 		conn.entriesFetcher(ctx, cancelFunc, &wg)
 
 		assert.Len(t, conn.writeChannel, 1)
 		assert.Equal(t, wantBatch, <-conn.writeChannel)
+		assert.Equal(t, wantLogEntry.Timestamp, conn.fetchQuery.Since)
 	})
 
-	t.Run("should not write when entries found are empty", func(t *testing.T) {
+	t.Run("should not search before the first client query arrives", func(t *testing.T) {
 		mocks := buildMocks(t)
 		ctx, cancelFunc := context.WithCancel(context.Background())
 		defer cancelFunc()
 
-		mocks.entriesSearcher.EXPECT().Search(gomock.Any(), gomock.Any()).
-			Do(func(context.Context, entryreader.SearchRequest) {
-				time.Sleep(time.Millisecond * 200)
-			}).
-			Return(entryreader.SearchResponse{
-				Entries: []*domain.LogEntry{},
-			}, nil)
-
+		// No Search expectation: searching before a query arrives fails the test.
 		conn := NewConnection(mocks.conn, mocks.entriesSearcher)
 
 		var wg sync.WaitGroup
@@ -223,6 +218,30 @@ func TestConnection_entriesFetcher(t *testing.T) {
 		assert.Empty(t, conn.writeChannel)
 	})
 
+	t.Run("should not write when entries found are empty", func(t *testing.T) {
+		mocks := buildMocks(t)
+		ctx, cancelFunc := context.WithCancel(context.Background())
+		defer cancelFunc()
+
+		mocks.entriesSearcher.EXPECT().Search(gomock.Any(), gomock.Any()).
+			Return(entryreader.SearchResponse{
+				Entries: []*domain.LogEntry{},
+			}, nil)
+
+		conn := NewConnection(mocks.conn, mocks.entriesSearcher)
+
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			time.Sleep(time.Millisecond * 100)
+			cancelFunc()
+		}()
+		conn.queryKick <- struct{}{}
+		conn.entriesFetcher(ctx, cancelFunc, &wg)
+
+		assert.Empty(t, conn.writeChannel)
+	})
+
 	t.Run("should write error when searching entries fails", func(t *testing.T) {
 		mocks := buildMocks(t)
 		ctx, cancelFunc := context.WithCancel(context.Background())
@@ -230,13 +249,10 @@ func TestConnection_entriesFetcher(t *testing.T) {
 
 		wantErr := errors.New("random error")
 		wantBatch := &batchEntries{
-			Err: wantErr,
+			Err: wantErr.Error(),
 		}
 
 		mocks.entriesSearcher.EXPECT().Search(gomock.Any(), gomock.Any()).
-			Do(func(context.Context, entryreader.SearchRequest) {
-				time.Sleep(time.Millisecond * 200)
-			}).
 			Return(entryreader.SearchResponse{}, wantErr)
 
 		conn := NewConnection(mocks.conn, mocks.entriesSearcher)
@@ -247,10 +263,54 @@ func TestConnection_entriesFetcher(t *testing.T) {
 			time.Sleep(time.Millisecond * 100)
 			cancelFunc()
 		}()
+		conn.queryKick <- struct{}{}
 		conn.entriesFetcher(ctx, cancelFunc, &wg)
 
 		assert.Len(t, conn.writeChannel, 1)
 		assert.Equal(t, wantBatch, <-conn.writeChannel)
+	})
+
+	t.Run("should discard results and not advance Since when the query changes mid-search", func(t *testing.T) {
+		mocks := buildMocks(t)
+		ctx, cancelFunc := context.WithCancel(context.Background())
+		defer cancelFunc()
+
+		staleEntry := &domain.LogEntry{
+			Timestamp: time.Now(),
+			Level:     domain.LevelInfo,
+			Message:   "stale",
+		}
+
+		conn := NewConnection(mocks.conn, mocks.entriesSearcher)
+
+		first := mocks.entriesSearcher.EXPECT().Search(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(context.Context, entryreader.SearchRequest) (entryreader.SearchResponse, error) {
+				// The client submits a new query while this search runs.
+				conn.fetchQueryM.Lock()
+				conn.fetchQuery = searchQuery{Query: "new"}
+				conn.queryGen++
+				conn.fetchQueryM.Unlock()
+				return entryreader.SearchResponse{Entries: []*domain.LogEntry{staleEntry}}, nil
+			})
+		mocks.entriesSearcher.EXPECT().Search(gomock.Any(), gomock.Any()).
+			After(first).
+			AnyTimes().
+			Return(entryreader.SearchResponse{}, nil)
+
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			time.Sleep(time.Millisecond * 100)
+			cancelFunc()
+		}()
+		conn.fetchQuery = searchQuery{Query: "old", Since: time.Now()}
+		conn.queryKick <- struct{}{}
+		conn.entriesFetcher(ctx, cancelFunc, &wg)
+
+		// The stale batch must not reach the client, and the new query's
+		// fresh view (Since zero) must not be clobbered.
+		assert.Empty(t, conn.writeChannel)
+		assert.True(t, conn.fetchQuery.Since.IsZero())
 	})
 
 	t.Run("should stop when given context is done", func(t *testing.T) {

@@ -230,6 +230,10 @@ func (s *Stdout) formatStacktrace(stacktrace string) string {
 	return stacktrace
 }
 
+// mapToLogEntry extracts the well-known keys (timestamp, msg, level, caller,
+// stacktrace) from a copy of inputData, leaving the remainder as Fields. The
+// input is not modified, so multiple processors can extract from the same
+// entry independently.
 func mapToLogEntry(inputData *orderedmap.OrderedMap) domain.LogEntry {
 	var (
 		ts         time.Time
@@ -238,6 +242,8 @@ func mapToLogEntry(inputData *orderedmap.OrderedMap) domain.LogEntry {
 		caller     string
 		stacktrace string
 	)
+	data := copyOrderedMap(*inputData)
+	inputData = &data
 	if m, key, ok := getTS(inputData); ok {
 		ts = parseTS(m)
 		inputData.Delete(key)
@@ -268,6 +274,15 @@ func mapToLogEntry(inputData *orderedmap.OrderedMap) domain.LogEntry {
 		Stacktrace: stacktrace,
 	}
 
+}
+
+func copyOrderedMap(m orderedmap.OrderedMap) orderedmap.OrderedMap {
+	cp := orderedmap.New()
+	for _, k := range m.Keys() {
+		v, _ := m.Get(k)
+		cp.Set(k, v)
+	}
+	return *cp
 }
 
 func parseTS(m interface{}) time.Time {
