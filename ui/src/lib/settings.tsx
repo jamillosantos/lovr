@@ -40,6 +40,8 @@ export interface Settings {
 	levelAliases: Record<string, string>;
 	/** Column widths in pixels, keyed by column name. */
 	columnWidths: Record<string, number>;
+	/** Detail panel width in pixels (0 = automatic). */
+	detailWidth: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -59,6 +61,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	defaultRange: "all",
 	levelAliases: { warn: "warning", err: "error", critical: "fatal" },
 	columnWidths: {},
+	detailWidth: 0,
 };
 
 const STORAGE_KEY = "lovr-settings";

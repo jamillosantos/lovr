@@ -1,5 +1,5 @@
 import { Copy, EyeOff, Search, SearchX, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { LevelBadge } from "@/components/LevelBadge.tsx";
 import { Button } from "@/components/ui/button";
 import {
@@ -215,6 +215,9 @@ function Section({
 	);
 }
 
+const MIN_DETAIL_WIDTH = 320;
+const MAX_DETAIL_WIDTH = 1200;
+
 export function LogDetail({
 	entry,
 	onClose,
@@ -224,8 +227,46 @@ export function LogDetail({
 	onClose: () => void;
 	onSearchAction: (field: Field, action: SearchAction) => void;
 }) {
-	const { settings } = useSettings();
+	const { settings, update } = useSettings();
 	const [fieldFilter, setFieldFilter] = useState("");
+
+	// Width during a drag lives locally; it persists to settings on mouseup.
+	const [width, setWidth] = useState(settings.detailWidth);
+	const widthRef = useRef(width);
+	widthRef.current = width;
+	useEffect(() => {
+		setWidth(settings.detailWidth);
+	}, [settings.detailWidth]);
+
+	const startResize = (event: React.MouseEvent<HTMLSpanElement>) => {
+		event.preventDefault();
+		const panel = event.currentTarget.parentElement;
+		if (!panel) {
+			return;
+		}
+		const startX = event.clientX;
+		const startWidth = panel.getBoundingClientRect().width;
+		const onMove = (move: MouseEvent) => {
+			// The handle sits on the left edge: dragging left grows the panel.
+			const next = Math.max(
+				MIN_DETAIL_WIDTH,
+				Math.min(MAX_DETAIL_WIDTH, startWidth + startX - move.clientX),
+			);
+			setWidth(Math.round(next));
+		};
+		const onUp = () => {
+			window.removeEventListener("mousemove", onMove);
+			window.removeEventListener("mouseup", onUp);
+			update({ detailWidth: widthRef.current });
+		};
+		window.addEventListener("mousemove", onMove);
+		window.addEventListener("mouseup", onUp);
+	};
+
+	const resetWidth = () => {
+		setWidth(0);
+		update({ detailWidth: 0 });
+	};
 
 	const sortedFields = useMemo(
 		() => [...(entry.fields ?? [])].sort((a, b) => a.key.localeCompare(b.key)),
@@ -245,7 +286,16 @@ export function LogDetail({
 	}, [sortedFields, fieldFilter]);
 
 	return (
-		<aside className="detail-panel">
+		<aside
+			className="detail-panel"
+			style={width > 0 ? { width, maxWidth: "none" } : undefined}
+		>
+			<span
+				aria-hidden
+				className="detail-resize"
+				onDoubleClick={resetWidth}
+				onMouseDown={startResize}
+			/>
 			<header className="detail-header">
 				<div className="detail-header-meta">
 					<div className="detail-header-row">

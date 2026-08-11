@@ -176,9 +176,8 @@ export function ViewsMenu({
 					<AlertDialogHeader>
 						<AlertDialogTitle>Update “{activeName}”?</AlertDialogTitle>
 						<AlertDialogDescription>
-							The saved view will be overwritten with the current search,
-							time range, columns, sorting and chart grouping. This cannot
-							be undone.
+							The saved view will be overwritten with the current search, time
+							range, columns, sorting and chart grouping. This cannot be undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
