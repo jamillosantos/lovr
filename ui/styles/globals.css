@@ -432,7 +432,7 @@
 		@apply relative;
 	}
 	.col-resize {
-		@apply absolute top-0 -right-2 h-full w-1.5 cursor-col-resize rounded hover:bg-ring/60;
+		@apply absolute top-0 right-0 h-full w-1.5 cursor-col-resize rounded hover:bg-ring/60;
 	}
 	.log-col-level {
 		@apply w-16 shrink-0;

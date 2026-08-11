@@ -54,7 +54,10 @@ function Cell({
 			);
 		case "message":
 			return (
-				<span className="log-row-message" style={style}>
+				<span
+					className="log-row-message"
+					style={width ? { width: `${width}px`, flex: "none" } : undefined}
+				>
 					{entry.message}
 				</span>
 			);
@@ -176,6 +179,14 @@ export function LogList({
 	// optional .SSS(4) + optional AM/PM(3).
 	const tsWidth = 14 + (settings.subsecond ? 4 : 0) + (settings.hour12 ? 3 : 0);
 
+	// resetWidth restores a column to its default (double-click on the handle).
+	const resetWidth = (column: string) => {
+		const next = { ...widthsRef.current };
+		delete next[column];
+		setWidths(next);
+		update({ columnWidths: next });
+	};
+
 	// startResize drags a column edge; the width persists in settings.
 	const startResize = (
 		event: React.MouseEvent<HTMLSpanElement>,
@@ -220,18 +231,22 @@ export function LogList({
 						className={cn(columnClass(column), "log-header-cell")}
 						key={column}
 						style={
-							widths[column] ? { width: `${widths[column]}px` } : undefined
+							widths[column]
+								? {
+										width: `${widths[column]}px`,
+										...(column === "message" ? { flex: "none" } : {}),
+									}
+								: undefined
 						}
 					>
 						{column}
-						{column !== "message" && (
-							<span
-								className="col-resize"
-								onMouseDown={(event) => startResize(event, column)}
-								role="separator"
-								aria-label={`Resize ${column} column`}
-							/>
-						)}
+						<span
+							className="col-resize"
+							onDoubleClick={() => resetWidth(column)}
+							onMouseDown={(event) => startResize(event, column)}
+							role="separator"
+							aria-label={`Resize ${column} column`}
+						/>
 					</span>
 				))}
 			</div>
