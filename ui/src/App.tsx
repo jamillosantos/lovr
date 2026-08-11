@@ -10,7 +10,6 @@ import { SettingsDialog } from "@/components/SettingsDialog.tsx";
 import { ThemeToggle } from "@/components/ThemeToggle.tsx";
 import { TimeFilter } from "@/components/TimeFilter.tsx";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import { ViewsMenu } from "@/components/ViewsMenu.tsx";
 import type { Entry, Field } from "@/domain/models.ts";
 import { useLiveEntries } from "@/hooks/useLiveEntries.ts";
@@ -46,6 +45,7 @@ export function App() {
 	const [refresh, setRefresh] = useState(0);
 	const [selected, setSelected] = useState<Entry | undefined>();
 	const [sortAsc, setSortAsc] = useState(false);
+	const [activeView, setActiveView] = useState<string | null>(null);
 
 	const syncURL = (state: URLState, push: boolean) => {
 		const url = stateURL(window.location.pathname, state);
@@ -81,6 +81,7 @@ export function App() {
 	};
 
 	const applyView = (view: View) => {
+		setActiveView(view.name);
 		setQueryInput(view.q);
 		setQuery(view.q);
 		setColumns(view.cols);
@@ -144,6 +145,7 @@ export function App() {
 		loadOlder,
 		loadingOlder,
 		exhausted,
+		total,
 	} = useLiveEntries(query, range, refresh);
 
 	const selectedEntry = useMemo(
@@ -180,6 +182,8 @@ export function App() {
 						groupBy,
 					})}
 					onApply={applyView}
+					activeName={activeView}
+					onActiveChange={setActiveView}
 				/>
 
 				<ConnectionStatus
@@ -187,6 +191,7 @@ export function App() {
 					count={entries.length}
 					onToggle={() => setPaused(!paused)}
 					paused={paused}
+					total={total}
 				/>
 
 				<SettingsDialog />

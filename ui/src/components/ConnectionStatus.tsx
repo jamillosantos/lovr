@@ -13,14 +13,21 @@ export function ConnectionStatus({
 	connection,
 	paused,
 	count,
+	total,
 	onToggle,
 }: {
 	connection: ConnectionState;
 	paused: boolean;
 	count: number;
+	/** Total matches for the current query; null while unknown. */
+	total: number | null;
 	onToggle: () => void;
 }) {
 	const [dotClass, label] = connectionLabels[connection];
+	const detail =
+		total !== null
+			? `${count.toLocaleString()} of ${total.toLocaleString()} matching entries loaded`
+			: `${count.toLocaleString()} entries loaded`;
 
 	return (
 		<Button
@@ -28,14 +35,17 @@ export function ConnectionStatus({
 			size="sm"
 			className="status-button"
 			onClick={onToggle}
-			title={paused ? "Resume the live stream" : "Pause the view"}
+			title={`${detail}. ${paused ? "Click to resume the live stream." : "Click to pause the view."}`}
 		>
 			<span
 				className={cn("status-dot", paused ? "status-dot-waiting" : dotClass)}
 			/>
 			{paused ? "Paused" : label}
-			<span className="status-count" title={`${count} entries loaded`}>
-				{count}
+			<span className="status-count">
+				{count.toLocaleString()}
+				{total !== null && (
+					<span className="status-total"> / {total.toLocaleString()}</span>
+				)}
 			</span>
 		</Button>
 	);

@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { removeView, sanitizeViews, upsertView, type View } from "./views.ts";
+import {
+	removeView,
+	sameViewState,
+	sanitizeViews,
+	upsertView,
+	type View,
+} from "./views.ts";
 
 const view = (name: string, q = ""): View => ({
 	name,
@@ -68,5 +74,20 @@ describe("upsertView / removeView", () => {
 		const views = upsertView([], view("a"));
 		expect(removeView(views, "a")).toEqual([]);
 		expect(removeView(views, "b")).toHaveLength(1);
+	});
+});
+
+describe("sameViewState", () => {
+	test("equal states match", () => {
+		expect(sameViewState(view("a"), view("b"))).toBe(true);
+	});
+	test("any drift breaks equality", () => {
+		expect(sameViewState(view("a"), { ...view("a"), q: "x" })).toBe(false);
+		expect(sameViewState(view("a"), { ...view("a"), sortAsc: true })).toBe(
+			false,
+		);
+		expect(
+			sameViewState(view("a"), { ...view("a"), columnWidths: { m: 100 } }),
+		).toBe(false);
 	});
 });

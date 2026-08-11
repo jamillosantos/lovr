@@ -14,6 +14,13 @@ export function mergeLive(
 	return [...incoming, ...kept].slice(0, max);
 }
 
+// countFresh returns how many incoming entries are not already loaded — the
+// amount a live batch grows the total number of matches.
+export function countFresh(current: Entry[], incoming: Entry[]): number {
+	const existing = new Set(current.map((e) => e.$id));
+	return incoming.filter((e) => !existing.has(e.$id)).length;
+}
+
 // mergeOlder appends a backfill page (already newest first within the page),
 // dropping entries that are already loaded (pages overlap at the boundary
 // timestamp).

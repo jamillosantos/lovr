@@ -2,7 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { wsURL } from "@/config.ts";
 import type { BatchEntries, Entry } from "@/domain/models.ts";
 import { searchEntries } from "@/lib/api.ts";
-import { MAX_ENTRIES, mergeLive, mergeOlder } from "@/lib/entries.ts";
+import {
+	countFresh,
+	MAX_ENTRIES,
+	mergeLive,
+	mergeOlder,
+} from "@/lib/entries.ts";
 import { useSettings } from "@/lib/settings.tsx";
 import { resolveRange, type TimeRange } from "@/lib/timerange.ts";
 
@@ -23,6 +28,8 @@ export interface LiveEntries {
 	loadingOlder: boolean;
 	/** True when the history has been fully paginated. */
 	exhausted: boolean;
+	/** Total matches for the current query/window; null until known. */
+	total: number | null;
 }
 
 // useLiveEntries combines the websocket live tail (new entries, prepended)
@@ -44,6 +51,7 @@ export function useLiveEntries(
 	const [connection, setConnection] = useState<ConnectionState>("connecting");
 	const [loadingOlder, setLoadingOlder] = useState(false);
 	const [exhausted, setExhausted] = useState(false);
+	const [total, setTotal] = useState<number | null>(null);
 
 	const entriesRef = useRef(entries);
 	entriesRef.current = entries;
@@ -64,6 +72,7 @@ export function useLiveEntries(
 		setFrozen(null);
 		setError(null);
 		setExhausted(false);
+		setTotal(null);
 		loadingOlderRef.current = false;
 		setLoadingOlder(false);
 
@@ -79,6 +88,31 @@ export function useLiveEntries(
 		const resolved = resolveRange(range);
 		windowRef.current = resolved;
 
+		// The total match count is authoritative on the server; recount there
+		// (debounced) instead of incrementing locally, which double-counts the
+		// initial backlog batches.
+		let totalTimer: ReturnType<typeof setTimeout> | undefined;
+		const syncTotal = () => {
+			const generation = generationRef.current;
+			searchEntries({
+				q: query,
+				since: resolved.since,
+				until: resolved.until,
+			})
+				.then((result) => {
+					if (generation === generationRef.current) {
+						setTotal(result.total);
+					}
+				})
+				.catch(() => {
+					// Non-fatal: the count stays stale until the next sync.
+				});
+		};
+		const scheduleTotalSync = () => {
+			clearTimeout(totalTimer);
+			totalTimer = setTimeout(syncTotal, 800);
+		};
+
 		const connect = () => {
 			setConnection("connecting");
 			ws = new WebSocket(url);
@@ -92,6 +126,7 @@ export function useLiveEntries(
 						until: resolved.until,
 					}),
 				);
+				syncTotal();
 			};
 
 			ws.onmessage = (event) => {
@@ -105,6 +140,9 @@ export function useLiveEntries(
 				}
 				setError(null);
 				const incoming = batch.entries;
+				if (countFresh(entriesRef.current, incoming) > 0) {
+					scheduleTotalSync();
+				}
 				setEntries((current) => mergeLive(current, incoming, MAX_ENTRIES));
 			};
 
@@ -126,6 +164,7 @@ export function useLiveEntries(
 		return () => {
 			closed = true;
 			clearTimeout(reconnectTimer);
+			clearTimeout(totalTimer);
 			ws?.close();
 		};
 		// biome-ignore lint/correctness/useExhaustiveDependencies: range is keyed by value
@@ -154,10 +193,11 @@ export function useLiveEntries(
 			until: oldest.timestamp,
 			pageSize: pageSizeRef.current,
 		})
-			.then((page) => {
+			.then((result) => {
 				if (generation !== generationRef.current) {
 					return;
 				}
+				const page = result.entries;
 				setEntries((cur) => {
 					const merged = mergeOlder(cur, page, MAX_ENTRIES);
 					if (merged.length === cur.length) {
@@ -205,5 +245,6 @@ export function useLiveEntries(
 		loadOlder,
 		loadingOlder,
 		exhausted,
+		total,
 	};
 }

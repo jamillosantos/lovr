@@ -148,13 +148,8 @@ func (r *Reader) Search(ctx context.Context, req SearchRequest) (SearchResponse,
 		entries = append(entries, entry)
 	}
 
-	count, err := r.index.DocCount()
-	if err != nil {
-		return SearchResponse{}, fmt.Errorf("error counting entries: %w", err)
-	}
-
 	return SearchResponse{
-		Count:    int64(count),
+		Count:    int64(result.Total),
 		Duration: result.Took,
 		Entries:  entries,
 	}, nil

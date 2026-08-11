@@ -13,10 +13,16 @@ export interface SearchParams {
 	pageSize?: number;
 }
 
+export interface SearchResult {
+	entries: Entry[];
+	/** Total number of matches for the query, not just this page. */
+	total: number;
+}
+
 export async function searchEntries(
 	{ q, since, until, pageSize }: SearchParams,
 	signal?: AbortSignal,
-): Promise<Entry[]> {
+): Promise<SearchResult> {
 	const params = new URLSearchParams();
 	if (q) {
 		params.set("q", q);
@@ -34,8 +40,8 @@ export async function searchEntries(
 	if (!res.ok) {
 		throw new Error(`search failed: ${res.status}`);
 	}
-	const body: { entries: Entry[] | null } = await res.json();
-	return body.entries ?? [];
+	const body: { entries: Entry[] | null; count?: number } = await res.json();
+	return { entries: body.entries ?? [], total: body.count ?? 0 };
 }
 
 export interface HistogramBucket {

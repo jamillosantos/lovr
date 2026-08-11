@@ -306,26 +306,6 @@
 		@apply w-full;
 	}
 
-	/* Views */
-	.views-menu {
-		@apply flex w-64 flex-col gap-1 p-2;
-	}
-	.views-empty {
-		@apply px-1 py-1 text-muted-foreground text-xs;
-	}
-	.views-row {
-		@apply flex items-center gap-1;
-	}
-	.views-apply {
-		@apply flex-1 cursor-pointer truncate rounded-sm px-2 py-1 text-left text-sm hover:bg-accent hover:text-accent-foreground;
-	}
-	.views-save {
-		@apply mt-1 flex gap-1 border-t pt-2;
-	}
-	.views-name-input {
-		@apply h-8 text-xs;
-	}
-
 	/* Settings */
 	.settings-body {
 		@apply flex max-h-[70vh] flex-col gap-3;
@@ -403,6 +383,9 @@
 	}
 	.status-count {
 		@apply ml-1 font-mono tabular-nums;
+	}
+	.status-total {
+		@apply text-muted-foreground/80;
 	}
 
 
@@ -603,6 +586,57 @@
 .tok-term-active {
 	@apply rounded-xs bg-accent/60;
 }
+/* Views (the menu styles a PopoverContent, hence unlayered) */
+.views-menu {
+	@apply flex w-72 flex-col gap-0.5 p-2;
+}
+.views-empty {
+	@apply px-1 py-1 text-muted-foreground text-xs;
+}
+.views-update {
+	@apply mb-1 w-full;
+}
+.views-update-label {
+	@apply truncate;
+}
+.views-row {
+	@apply flex items-center gap-1;
+}
+.views-row .views-delete {
+	@apply opacity-0 transition-opacity;
+}
+.views-row:hover .views-delete,
+.views-row:focus-within .views-delete {
+	@apply opacity-100;
+}
+.views-row-active .views-apply {
+	@apply bg-accent/50;
+}
+.views-apply {
+	@apply flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded-sm px-1.5 py-1 text-left text-sm hover:bg-accent hover:text-accent-foreground;
+}
+.views-check {
+	@apply flex w-4 shrink-0 items-center justify-center text-primary [&_svg]:size-3.5;
+}
+.views-apply-name {
+	@apply truncate;
+}
+.views-apply-q {
+	@apply min-w-0 flex-1 truncate text-right font-mono text-[10px] text-muted-foreground;
+}
+.views-save {
+	@apply mt-1 flex gap-1 border-t pt-2;
+}
+.views-name-input {
+	@apply h-8 text-xs;
+}
+.views-trigger-label {
+	@apply max-w-28 truncate;
+}
+.views-dirty-dot {
+	@apply size-1.5 shrink-0 rounded-full bg-level-warning;
+}
+
 .column-selector {
 	@apply flex max-h-[70vh] w-64 flex-col overflow-y-auto p-2;
 }
@@ -639,7 +673,8 @@
 .search-help {
 	@apply w-[30rem] max-w-[90vw];
 }
-[data-slot="dialog-overlay"] {
+[data-slot="dialog-overlay"],
+[data-slot="alert-dialog-overlay"] {
 	@apply backdrop-blur-sm;
 }
 .settings-dialog {

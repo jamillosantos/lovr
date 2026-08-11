@@ -96,3 +96,18 @@ export function upsertView(views: View[], view: View): View[] {
 export function removeView(views: View[], name: string): View[] {
 	return views.filter((v) => v.name !== name);
 }
+
+// sameViewState compares everything but the name.
+export function sameViewState(
+	a: Omit<View, "name">,
+	b: Omit<View, "name">,
+): boolean {
+	return (
+		a.q === b.q &&
+		JSON.stringify(a.range) === JSON.stringify(b.range) &&
+		JSON.stringify(a.cols) === JSON.stringify(b.cols) &&
+		JSON.stringify(a.columnWidths) === JSON.stringify(b.columnWidths) &&
+		a.sortAsc === b.sortAsc &&
+		a.groupBy === b.groupBy
+	);
+}
