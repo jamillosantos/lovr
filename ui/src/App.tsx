@@ -11,6 +11,7 @@ import { ThemeToggle } from "@/components/ThemeToggle.tsx";
 import { TimeFilter } from "@/components/TimeFilter.tsx";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { ViewsMenu } from "@/components/ViewsMenu.tsx";
 import type { Entry, Field } from "@/domain/models.ts";
 import { useLiveEntries } from "@/hooks/useLiveEntries.ts";
 import {
@@ -22,9 +23,10 @@ import {
 } from "@/lib/query.ts";
 import { useSettings } from "@/lib/settings.tsx";
 import type { TimeRange } from "@/lib/timerange.ts";
+import type { View } from "@/lib/views.ts";
 
 export function App() {
-	const { settings } = useSettings();
+	const { settings, update } = useSettings();
 	const [initialState] = useState(() =>
 		stateFromSearch(window.location.search),
 	);
@@ -75,6 +77,16 @@ export function App() {
 		setRange(next);
 		// The stream restarts via the range key; persist as navigation.
 		syncURL({ q: query, cols: columns, range: next, groupBy }, true);
+	};
+
+	const applyView = (view: View) => {
+		setQueryInput(view.q);
+		setQuery(view.q);
+		setColumns(view.cols);
+		setRange(view.range);
+		update({ columnWidths: view.columnWidths });
+		setRefresh((r) => r + 1);
+		syncURL({ q: view.q, cols: view.cols, range: view.range, groupBy }, true);
 	};
 
 	const changeGroupBy = (next: string) => {
@@ -151,6 +163,16 @@ export function App() {
 				<TimeFilter onChange={changeRange} range={range} />
 
 				<ColumnSelector columns={columns} onChange={changeColumns} />
+
+				<ViewsMenu
+					currentView={() => ({
+						q: queryInput,
+						range,
+						cols: columns,
+						columnWidths: settings.columnWidths,
+					})}
+					onApply={applyView}
+				/>
 
 				<ConnectionStatus
 					connection={connection}

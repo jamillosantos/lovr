@@ -306,6 +306,26 @@
 		@apply w-full;
 	}
 
+	/* Views */
+	.views-menu {
+		@apply flex w-64 flex-col gap-1 p-2;
+	}
+	.views-empty {
+		@apply px-1 py-1 text-muted-foreground text-xs;
+	}
+	.views-row {
+		@apply flex items-center gap-1;
+	}
+	.views-apply {
+		@apply flex-1 cursor-pointer truncate rounded-sm px-2 py-1 text-left text-sm hover:bg-accent hover:text-accent-foreground;
+	}
+	.views-save {
+		@apply mt-1 flex gap-1 border-t pt-2;
+	}
+	.views-name-input {
+		@apply h-8 text-xs;
+	}
+
 	/* Settings */
 	.settings-body {
 		@apply flex max-h-[70vh] flex-col gap-3;

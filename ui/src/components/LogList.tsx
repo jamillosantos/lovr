@@ -113,6 +113,10 @@ export function LogList({
 	);
 	const widthsRef = useRef(widths);
 	widthsRef.current = widths;
+	// Views/restore replace widths from outside; follow them.
+	useEffect(() => {
+		setWidths(settings.columnWidths);
+	}, [settings.columnWidths]);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const sentinelRef = useRef<HTMLDivElement>(null);
 	const onEndReachedRef = useRef(onEndReached);

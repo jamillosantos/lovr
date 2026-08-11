@@ -20,6 +20,7 @@ import {
 } from "@/lib/settings.tsx";
 import { PRESETS } from "@/lib/timerange.ts";
 import { cn } from "@/lib/utils";
+import { loadViews, persistViews, sanitizeViews } from "@/lib/views.ts";
 
 function Toggle({
 	label,
@@ -106,7 +107,8 @@ export function SettingsDialog() {
 	];
 
 	const exportSettings = () => {
-		const blob = new Blob([JSON.stringify(settings, null, 2)], {
+		const payload = { settings, views: loadViews() };
+		const blob = new Blob([JSON.stringify(payload, null, 2)], {
 			type: "application/json",
 		});
 		const url = URL.createObjectURL(blob);
@@ -120,9 +122,23 @@ export function SettingsDialog() {
 	const importSettings = (file: File) => {
 		file.text().then((text) => {
 			try {
-				const next: SettingsType = sanitizeSettings(JSON.parse(text));
+				const parsed = JSON.parse(text);
+				// New payloads carry {settings, views}; legacy files are the
+				// settings object itself.
+				const rawSettings =
+					typeof parsed === "object" && parsed !== null && "settings" in parsed
+						? parsed.settings
+						: parsed;
+				const next: SettingsType = sanitizeSettings(rawSettings);
 				replace(next);
 				setAliasText(aliasesToText(next.levelAliases));
+				if (
+					typeof parsed === "object" &&
+					parsed !== null &&
+					"views" in parsed
+				) {
+					persistViews(sanitizeViews(parsed.views));
+				}
 			} catch {
 				// Ignore malformed files.
 			}
