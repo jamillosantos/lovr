@@ -102,6 +102,7 @@ export function App() {
 	};
 
 	// Restore the state when navigating browser history.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: subscribe to popstate once on mount; runQuery(q, false) only calls stable setState functions, so the stale closure is harmless
 	useEffect(() => {
 		const onPopState = () => {
 			const state = stateFromSearch(window.location.search);

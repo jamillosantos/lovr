@@ -62,6 +62,7 @@ export function useLiveEntries(
 
 	const rangeKey = JSON.stringify(range);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: range is keyed by value via rangeKey; refresh is an intentional restart nonce
 	useEffect(() => {
 		let ws: WebSocket | null = null;
 		let closed = false;
@@ -167,7 +168,6 @@ export function useLiveEntries(
 			clearTimeout(totalTimer);
 			ws?.close();
 		};
-		// biome-ignore lint/correctness/useExhaustiveDependencies: range is keyed by value
 	}, [query, refresh, rangeKey]);
 
 	const loadOlder = useCallback(() => {
