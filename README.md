@@ -67,10 +67,14 @@ tail -f app.log | lovr
 
 #### Filtering entries
 
+The `--filter` option uses the same search syntax as the web UI: `key:value`
+terms are ANDed, `OR` and parentheses group alternatives, `*`/`?` wildcards,
+`-` negates and `_exists_:key` requires a field to be present.
+
 ```
-lovr --filter 'debug_id = "75fcd5f5-f04d-4dc7-9be3-e2e574857a76"' -s app.log
-# Or 
-lovr -f 'debug_id = "75fcd5f5-f04d-4dc7-9be3-e2e574857a76"' -s app.log 
+lovr --filter 'debug_id:75fcd5f5-f04d-4dc7-9be3-e2e574857a76' -s app.log
+# Or
+lovr -f 'level:(error OR fatal) service:api* -route:/health' -s app.log
 ```
 
 

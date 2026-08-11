@@ -11,6 +11,7 @@ import (
 	"github.com/jamillosantos/lovr/internal/parsers"
 	_ "github.com/jamillosantos/lovr/internal/parsers/json"
 	"github.com/jamillosantos/lovr/internal/service"
+	"github.com/jamillosantos/lovr/internal/service/entryreader"
 	"github.com/jamillosantos/lovr/internal/service/processors"
 )
 
@@ -67,11 +68,14 @@ Examples:
 
 		processorsList := make([]service.EntryProcessor, 0)
 		if filterArg != "" {
-			filterprocessor, err := processors.NewFilter(filterArg)
+			matcher, err := entryreader.NewMatcher(filterArg)
 			if err != nil {
 				reportFatalError(err)
 			}
-			processorsList = append(processorsList, filterprocessor)
+			defer func() {
+				_ = matcher.Close()
+			}()
+			processorsList = append(processorsList, processors.NewFilter(matcher))
 		}
 		processorsList = append(processorsList, processors.NewStdout())
 
@@ -92,7 +96,7 @@ func Execute() {
 func init() {
 	rootCmd.PersistentFlags().BoolVar(&showParseErrorsArg, "show-parse-errors", showParseErrorsArg, "Output parse errors to the STDERR")
 	rootCmd.PersistentFlags().StringVarP(&sourceArg, "source", "s", sourceArg, "Filename of the log information (use `-` for STDIN).")
-	rootCmd.PersistentFlags().StringVarP(&filterArg, "filter", "f", filterArg, "Filename of the log information (use `-` for STDIN).")
+	rootCmd.PersistentFlags().StringVarP(&filterArg, "filter", "f", filterArg, "Filter entries using the web UI search syntax (e.g. 'level:error service:api* (timeout OR refused)').")
 
 	// No filters are available yet
 	// rootCmd.PersistentFlags().StringVarP(&filtersArg, "filters", "i", filtersArg, "Comma separated list of filters to transform the source stream (docker).")

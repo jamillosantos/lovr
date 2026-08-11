@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/blevesearch/bleve/v2 v2.6.0
-	github.com/expr-lang/expr v1.17.8
+	github.com/blevesearch/bleve_index_api v1.3.11
 	github.com/fatih/color v1.19.0
 	github.com/gofiber/contrib/v3/websocket v1.2.2
 	github.com/gofiber/fiber/v3 v3.4.0
@@ -20,7 +20,6 @@ require (
 	github.com/RoaringBitmap/roaring/v2 v2.14.5 // indirect
 	github.com/andybalholm/brotli v1.2.2 // indirect
 	github.com/bits-and-blooms/bitset v1.24.6 // indirect
-	github.com/blevesearch/bleve_index_api v1.3.11 // indirect
 	github.com/blevesearch/geo v0.2.5 // indirect
 	github.com/blevesearch/go-faiss v1.1.0 // indirect
 	github.com/blevesearch/go-porterstemmer v1.0.3 // indirect

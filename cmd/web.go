@@ -58,11 +58,14 @@ search for log entries on a modern UI.`,
 
 		processorsList := make([]service.EntryProcessor, 0)
 		if filterArg != "" {
-			filterprocessor, err := processors.NewFilter(filterArg)
+			matcher, err := entryreader.NewMatcher(filterArg)
 			if err != nil {
 				reportFatalError(err)
 			}
-			processorsList = append(processorsList, filterprocessor)
+			defer func() {
+				_ = matcher.Close()
+			}()
+			processorsList = append(processorsList, processors.NewFilter(matcher))
 		}
 		processorsList = append(processorsList, processors.NewStdout(), indexer)
 

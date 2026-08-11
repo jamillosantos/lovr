@@ -56,6 +56,17 @@ func NewIndexer(index bleve.Index) *Indexer {
 }
 
 func (s *Indexer) Process(_ context.Context, entry *domain.Entry) error {
+	id, doc, err := BuildDoc(entry)
+	if err != nil {
+		return err
+	}
+	return s.index.Index(id, doc)
+}
+
+// BuildDoc converts a raw entry into the document shape the Indexer stores,
+// returning the generated entry ID. Shared with entryreader.Matcher so the
+// --filter option and the web search agree on semantics by construction.
+func BuildDoc(entry *domain.Entry) (string, map[string]interface{}, error) {
 	logEntry := mapToLogEntry(entry)
 	if logEntry.Timestamp.IsZero() {
 		// Entries with a missing/unparseable timestamp would never match the
@@ -65,7 +76,7 @@ func (s *Indexer) Process(_ context.Context, entry *domain.Entry) error {
 
 	id, err := ulid.New(logEntry.Timestamp)
 	if err != nil {
-		return fmt.Errorf("failed creating the entry ID: %w", err)
+		return "", nil, fmt.Errorf("failed creating the entry ID: %w", err)
 	}
 
 	doc := map[string]interface{}{
@@ -85,7 +96,7 @@ func (s *Indexer) Process(_ context.Context, entry *domain.Entry) error {
 		doc[k] = normalizeValue(v)
 	}
 
-	return s.index.Index(id.String(), doc)
+	return id.String(), doc, nil
 }
 
 // normalizeValue converts orderedmap values (as produced by the JSON parser)
