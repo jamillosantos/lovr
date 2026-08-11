@@ -20,6 +20,7 @@ import { resolveRange, type TimeRange } from "@/lib/timerange.ts";
 
 const CHART_HEIGHT = 96;
 const SEGMENT_GAP = 2;
+const AXIS_WIDTH = 44;
 const BAR_GAP = 2;
 
 const LEVEL_COLORS: Record<string, string> = {
@@ -168,7 +169,8 @@ export function Histogram({
 		),
 	);
 
-	const slot = buckets.length > 0 ? width / buckets.length : 0;
+	const plotWidth = Math.max(0, width - AXIS_WIDTH);
+	const slot = buckets.length > 0 ? plotWidth / buckets.length : 0;
 	const barWidth = Math.max(2, slot - BAR_GAP);
 	const usableHeight = CHART_HEIGHT - 2;
 
@@ -179,7 +181,7 @@ export function Histogram({
 	const startDrag = (downEvent: React.MouseEvent<SVGSVGElement>) => {
 		const rect = downEvent.currentTarget.getBoundingClientRect();
 		const clamp = (clientX: number) =>
-			Math.max(0, Math.min(rect.width, clientX - rect.left));
+			Math.max(AXIS_WIDTH, Math.min(rect.width, clientX - rect.left));
 		const start = clamp(downEvent.clientX);
 		setDrag({ start, current: start });
 
@@ -197,7 +199,12 @@ export function Histogram({
 			}
 			const t0 = new Date(current.start).getTime();
 			const t1 = new Date(current.end).getTime();
-			const at = (x: number) => new Date(t0 + (x / rect.width) * (t1 - t0));
+			const at = (x: number) =>
+				new Date(
+					t0 +
+						((x - AXIS_WIDTH) / Math.max(1, rect.width - AXIS_WIDTH)) *
+							(t1 - t0),
+				);
 			const [a, b] = start < end ? [start, end] : [end, start];
 			onRangeSelect(at(a).toISOString(), at(b).toISOString());
 		};
@@ -223,7 +230,9 @@ export function Histogram({
 						onMouseMove={(event) => {
 							const rect = event.currentTarget.getBoundingClientRect();
 							const index = Math.floor(
-								((event.clientX - rect.left) / rect.width) * buckets.length,
+								((event.clientX - rect.left - AXIS_WIDTH) /
+									Math.max(1, rect.width - AXIS_WIDTH)) *
+									buckets.length,
 							);
 							setHover(Math.max(0, Math.min(buckets.length - 1, index)));
 							setHoverY(event.clientY - rect.top);
@@ -261,19 +270,24 @@ export function Histogram({
 							/>
 						)}
 						{maxTotal > 1 &&
-							[1, 0.5].map((frac) => {
+							[1, 0.75, 0.5, 0.25].map((frac) => {
 								const y =
 									CHART_HEIGHT - (usableHeight - SEGMENT_GAP) * frac + 1;
 								return (
 									<g key={frac}>
 										<line
 											className="histogram-gridline"
-											x1={0}
+											x1={AXIS_WIDTH}
 											x2={width}
 											y1={y}
 											y2={y}
 										/>
-										<text className="histogram-grid-label" x={2} y={y - 2}>
+										<text
+											className="histogram-grid-label"
+											textAnchor="end"
+											x={AXIS_WIDTH - 6}
+											y={Math.max(11, y + 3)}
+										>
 											{Math.round(maxTotal * frac)}
 										</text>
 									</g>
@@ -281,7 +295,7 @@ export function Histogram({
 							})}
 						{hoverY !== null && drag === null && (
 							<g className="histogram-crosshair">
-								<line x1={0} x2={width} y1={hoverY} y2={hoverY} />
+								<line x1={AXIS_WIDTH} x2={width} y1={hoverY} y2={hoverY} />
 								<text
 									className="histogram-grid-label"
 									textAnchor="end"
@@ -308,7 +322,7 @@ export function Histogram({
 							/>
 						)}
 						{buckets.map((bucket, i) => {
-							const x = i * slot + BAR_GAP / 2;
+							const x = AXIS_WIDTH + i * slot + BAR_GAP / 2;
 							let yBottom = CHART_HEIGHT;
 							return groups.map((group) => {
 								const count = bucket.counts?.[group] ?? 0;

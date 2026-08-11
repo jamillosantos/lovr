@@ -245,7 +245,7 @@
 		stroke-dasharray: 3 3;
 	}
 	.histogram-grid-label {
-		@apply fill-muted-foreground font-mono text-[9px];
+		@apply fill-muted-foreground font-mono text-xs tabular-nums;
 	}
 	.histogram-hatch {
 		stroke: var(--background);
@@ -274,7 +274,7 @@
 		@apply flex items-center gap-3 py-0.5;
 	}
 	.histogram-axis {
-		@apply font-mono text-[10px] text-muted-foreground;
+		@apply font-mono text-muted-foreground text-xs;
 	}
 	.histogram-legend {
 		@apply flex flex-1 flex-wrap justify-center gap-3;
