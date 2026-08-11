@@ -163,15 +163,17 @@ export function App() {
 				<ThemeToggle />
 			</header>
 
-			<Histogram
-				groupBy={groupBy}
-				onGroupByChange={changeGroupBy}
-				onRangeSelect={(from, to) => changeRange({ from, to })}
-				paused={paused}
-				query={query}
-				range={range}
-				refresh={refresh}
-			/>
+			{settings.showChart && (
+				<Histogram
+					groupBy={groupBy}
+					onGroupByChange={changeGroupBy}
+					onRangeSelect={(from, to) => changeRange({ from, to })}
+					paused={paused}
+					query={query}
+					range={range}
+					refresh={refresh}
+				/>
+			)}
 
 			{error && (
 				<Alert variant="destructive" className="error-banner">

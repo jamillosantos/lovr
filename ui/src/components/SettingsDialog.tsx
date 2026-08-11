@@ -152,6 +152,28 @@ export function SettingsDialog() {
 					</TabsList>
 					<TabsContent className="settings-tab" value="display">
 						<div className="settings-options">
+							{(["system", "light", "dark"] as const).map((t) => (
+								<button
+									className={cn(
+										"settings-option",
+										settings.theme === t && "settings-option-active",
+									)}
+									key={t}
+									onClick={() => update({ theme: t })}
+									type="button"
+								>
+									{t === "system"
+										? "System theme"
+										: `${t[0]?.toUpperCase()}${t.slice(1)} theme`}
+								</button>
+							))}
+						</div>
+						<Toggle
+							checked={settings.showChart}
+							label="Show the histogram chart"
+							onChange={(showChart) => update({ showChart })}
+						/>
+						<div className="settings-options">
 							{tzOptions.map(([value, label]) => (
 								<button
 									className={cn(

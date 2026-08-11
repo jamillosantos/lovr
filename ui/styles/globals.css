@@ -236,6 +236,17 @@
 	.histogram-hover-band {
 		@apply fill-muted/60;
 	}
+	.histogram-crosshair line {
+		@apply stroke-ring;
+		stroke-dasharray: 2 2;
+	}
+	.histogram-gridline {
+		@apply stroke-border;
+		stroke-dasharray: 3 3;
+	}
+	.histogram-grid-label {
+		@apply fill-muted-foreground font-mono text-[9px];
+	}
 	.histogram-hatch {
 		stroke: var(--background);
 		stroke-opacity: 0.5;
@@ -396,6 +407,12 @@
 	}
 	.log-header {
 		@apply flex items-center gap-3 border-b px-3 py-1.5 font-mono text-[10px] text-muted-foreground uppercase tracking-wide;
+	}
+	.log-header-cell {
+		@apply relative;
+	}
+	.col-resize {
+		@apply absolute top-0 -right-2 h-full w-1.5 cursor-col-resize rounded hover:bg-ring/60;
 	}
 	.log-col-level {
 		@apply w-16 shrink-0;

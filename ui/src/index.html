@@ -9,12 +9,15 @@
          keeps unset reads from crashing in the browser. -->
     <script>
       globalThis.process ??= { env: {} };
-      const storedTheme = localStorage.getItem("theme");
+      let theme = "system";
+      try {
+        theme = JSON.parse(localStorage.getItem("lovr-settings")).theme || "system";
+      } catch {}
       document.documentElement.classList.toggle(
         "dark",
-        storedTheme
-          ? storedTheme === "dark"
-          : window.matchMedia("(prefers-color-scheme: dark)").matches,
+        theme === "dark" ||
+          (theme !== "light" &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches),
       );
     </script>
     <script type="module" src="./frontend.tsx" async></script>

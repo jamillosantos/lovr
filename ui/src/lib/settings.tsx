@@ -8,6 +8,9 @@ import {
 
 export interface Settings {
 	// Display
+	theme: "system" | "light" | "dark";
+	/** Show the histogram chart. */
+	showChart: boolean;
 	/** "local", "utc" or an IANA zone. */
 	timezone: string;
 	/** 12-hour clock with AM/PM. */
@@ -35,9 +38,13 @@ export interface Settings {
 	defaultRange: string;
 	/** Level aliases, e.g. {"warn": "warning"}. */
 	levelAliases: Record<string, string>;
+	/** Column widths in pixels, keyed by column name. */
+	columnWidths: Record<string, number>;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
+	theme: "system",
+	showChart: true,
 	timezone: "utc",
 	hour12: false,
 	hideDateToday: false,
@@ -51,6 +58,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	autoPauseOnScroll: false,
 	defaultRange: "all",
 	levelAliases: { warn: "warning", err: "error", critical: "fatal" },
+	columnWidths: {},
 };
 
 const STORAGE_KEY = "lovr-settings";
@@ -60,6 +68,7 @@ export function sanitizeSettings(raw: unknown): Settings {
 	const out: Settings = {
 		...DEFAULT_SETTINGS,
 		levelAliases: { ...DEFAULT_SETTINGS.levelAliases },
+		columnWidths: {},
 	};
 	if (typeof raw !== "object" || raw === null) {
 		return out;
@@ -79,6 +88,14 @@ export function sanitizeSettings(raw: unknown): Settings {
 			}
 		} else if (typeof defaultValue === "string" && typeof value === "string") {
 			(out as unknown as Record<string, unknown>)[key] = value;
+		} else if (key === "columnWidths" && typeof value === "object") {
+			const widths: Record<string, number> = {};
+			for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+				if (typeof v === "number" && Number.isFinite(v) && v >= 20) {
+					widths[k] = v;
+				}
+			}
+			out.columnWidths = widths;
 		} else if (key === "levelAliases" && typeof value === "object") {
 			const aliases: Record<string, string> = {};
 			for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
@@ -91,6 +108,9 @@ export function sanitizeSettings(raw: unknown): Settings {
 	}
 	if (out.density !== "compact" && out.density !== "comfortable") {
 		out.density = "comfortable";
+	}
+	if (!["system", "light", "dark"].includes(out.theme)) {
+		out.theme = "system";
 	}
 	return out;
 }
@@ -120,6 +140,20 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 	useEffect(() => {
 		localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
 	}, [settings]);
+
+	// Apply the theme; "system" follows the OS preference live.
+	useEffect(() => {
+		const media = window.matchMedia("(prefers-color-scheme: dark)");
+		const apply = () => {
+			const dark =
+				settings.theme === "dark" ||
+				(settings.theme === "system" && media.matches);
+			document.documentElement.classList.toggle("dark", dark);
+		};
+		apply();
+		media.addEventListener("change", apply);
+		return () => media.removeEventListener("change", apply);
+	}, [settings.theme]);
 
 	const update = (patch: Partial<Settings>) =>
 		setSettings((current) => ({ ...current, ...patch }));

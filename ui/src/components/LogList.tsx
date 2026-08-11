@@ -1,5 +1,5 @@
 import { Loader2 } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { LevelBadge } from "@/components/LevelBadge.tsx";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Entry } from "@/domain/models.ts";
@@ -26,6 +26,7 @@ function Cell({
 	entry,
 	timezone,
 	formatOptions,
+	width,
 }: {
 	column: string;
 	entry: Entry;
@@ -35,22 +36,40 @@ function Cell({
 		hideDateToday: boolean;
 		subsecond: boolean;
 	};
+	width?: number;
 }) {
+	const style = width ? { width: `${width}px` } : undefined;
 	switch (column) {
 		case "timestamp":
 			return (
-				<time className="log-row-time">
+				<time className="log-row-time" style={style}>
 					{formatListTimestamp(entry.timestamp, timezone, formatOptions)}
 				</time>
 			);
 		case "level":
-			return <LevelBadge level={entry.level} />;
+			return (
+				<span className="log-col-level" style={style}>
+					<LevelBadge level={entry.level} />
+				</span>
+			);
 		case "message":
-			return <span className="log-row-message">{entry.message}</span>;
+			return (
+				<span className="log-row-message" style={style}>
+					{entry.message}
+				</span>
+			);
 		case "caller":
-			return <span className="log-row-field">{entry.caller ?? ""}</span>;
+			return (
+				<span className="log-row-field" style={style}>
+					{entry.caller ?? ""}
+				</span>
+			);
 		case "stacktrace":
-			return <span className="log-row-field">{entry.stacktrace ?? ""}</span>;
+			return (
+				<span className="log-row-field" style={style}>
+					{entry.stacktrace ?? ""}
+				</span>
+			);
 		default: {
 			const value = entry.fields?.find((f) => f.key === column)?.value;
 			const text =
@@ -59,7 +78,11 @@ function Cell({
 					: typeof value === "object" && value !== null
 						? JSON.stringify(value)
 						: String(value);
-			return <span className="log-row-field">{text}</span>;
+			return (
+				<span className="log-row-field" style={style}>
+					{text}
+				</span>
+			);
 		}
 	}
 }
@@ -84,7 +107,12 @@ export function LogList({
 	loadingOlder?: boolean;
 	exhausted?: boolean;
 }) {
-	const { settings } = useSettings();
+	const { settings, update } = useSettings();
+	const [widths, setWidths] = useState<Record<string, number>>(
+		settings.columnWidths,
+	);
+	const widthsRef = useRef(widths);
+	widthsRef.current = widths;
 	const containerRef = useRef<HTMLDivElement>(null);
 	const sentinelRef = useRef<HTMLDivElement>(null);
 	const onEndReachedRef = useRef(onEndReached);
@@ -144,6 +172,34 @@ export function LogList({
 	// optional .SSS(4) + optional AM/PM(3).
 	const tsWidth = 14 + (settings.subsecond ? 4 : 0) + (settings.hour12 ? 3 : 0);
 
+	// startResize drags a column edge; the width persists in settings.
+	const startResize = (
+		event: React.MouseEvent<HTMLSpanElement>,
+		column: string,
+	) => {
+		event.preventDefault();
+		const cell = event.currentTarget.parentElement;
+		if (!cell) {
+			return;
+		}
+		const startX = event.clientX;
+		const startWidth = cell.getBoundingClientRect().width;
+		const onMove = (move: MouseEvent) => {
+			const next = Math.max(
+				40,
+				Math.min(800, startWidth + move.clientX - startX),
+			);
+			setWidths((w) => ({ ...w, [column]: Math.round(next) }));
+		};
+		const onUp = () => {
+			window.removeEventListener("mousemove", onMove);
+			window.removeEventListener("mouseup", onUp);
+			update({ columnWidths: widthsRef.current });
+		};
+		window.addEventListener("mousemove", onMove);
+		window.addEventListener("mouseup", onUp);
+	};
+
 	return (
 		<div
 			className={cn(
@@ -156,8 +212,22 @@ export function LogList({
 		>
 			<div className="log-header">
 				{columns.map((column) => (
-					<span className={columnClass(column)} key={column}>
+					<span
+						className={cn(columnClass(column), "log-header-cell")}
+						key={column}
+						style={
+							widths[column] ? { width: `${widths[column]}px` } : undefined
+						}
+					>
 						{column}
+						{column !== "message" && (
+							<span
+								className="col-resize"
+								onMouseDown={(event) => startResize(event, column)}
+								role="separator"
+								aria-label={`Resize ${column} column`}
+							/>
+						)}
 					</span>
 				))}
 			</div>
@@ -179,6 +249,7 @@ export function LogList({
 										formatOptions={settings}
 										key={column}
 										timezone={settings.timezone}
+										width={widths[column]}
 									/>
 								))}
 							</button>

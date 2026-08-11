@@ -88,6 +88,8 @@ export function Histogram({
 	const [data, setData] = useState<HistogramResponse | null>(null);
 	const [fields, setFields] = useState<string[]>([]);
 	const [hover, setHover] = useState<number | null>(null);
+	const [hoverY, setHoverY] = useState<number | null>(null);
+	const [hoverX, setHoverX] = useState(0);
 	const [width, setWidth] = useState(0);
 	const [drag, setDrag] = useState<{ start: number; current: number } | null>(
 		null,
@@ -214,13 +216,18 @@ export function Histogram({
 						className="histogram-svg"
 						height={CHART_HEIGHT}
 						onMouseDown={startDrag}
-						onMouseLeave={() => setHover(null)}
+						onMouseLeave={() => {
+							setHover(null);
+							setHoverY(null);
+						}}
 						onMouseMove={(event) => {
 							const rect = event.currentTarget.getBoundingClientRect();
 							const index = Math.floor(
 								((event.clientX - rect.left) / rect.width) * buckets.length,
 							);
 							setHover(Math.max(0, Math.min(buckets.length - 1, index)));
+							setHoverY(event.clientY - rect.top);
+							setHoverX(event.clientX - rect.left);
 						}}
 						width={width}
 					>
@@ -252,6 +259,44 @@ export function Histogram({
 								x={hover * slot}
 								y={0}
 							/>
+						)}
+						{maxTotal > 1 &&
+							[1, 0.5].map((frac) => {
+								const y =
+									CHART_HEIGHT - (usableHeight - SEGMENT_GAP) * frac + 1;
+								return (
+									<g key={frac}>
+										<line
+											className="histogram-gridline"
+											x1={0}
+											x2={width}
+											y1={y}
+											y2={y}
+										/>
+										<text className="histogram-grid-label" x={2} y={y - 2}>
+											{Math.round(maxTotal * frac)}
+										</text>
+									</g>
+								);
+							})}
+						{hoverY !== null && drag === null && (
+							<g className="histogram-crosshair">
+								<line x1={0} x2={width} y1={hoverY} y2={hoverY} />
+								<text
+									className="histogram-grid-label"
+									textAnchor="end"
+									x={width - 2}
+									y={hoverY - 3}
+								>
+									{Math.max(
+										0,
+										Math.round(
+											((CHART_HEIGHT - hoverY) / (usableHeight - SEGMENT_GAP)) *
+												maxTotal,
+										),
+									)}
+								</text>
+							</g>
 						)}
 						{drag !== null && (
 							<rect
@@ -333,7 +378,11 @@ export function Histogram({
 					<div
 						className="histogram-tooltip"
 						style={{
-							left: `${Math.min(width - 180, Math.max(0, (hover ?? 0) * slot - 80))}px`,
+							// Keep the panel beside the pointer, flipping at the edge.
+							left: `${
+								hoverX + 196 > width ? Math.max(0, hoverX - 192) : hoverX + 16
+							}px`,
+							top: `${Math.max(2, Math.min((hoverY ?? 0) + 10, CHART_HEIGHT - 20))}px`,
 						}}
 					>
 						<div className="histogram-tooltip-time">
