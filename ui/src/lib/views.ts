@@ -8,6 +8,10 @@ export interface View {
 	range: TimeRange;
 	cols: string[];
 	columnWidths: Record<string, number>;
+	/** Oldest first when true. */
+	sortAsc: boolean;
+	/** Histogram grouping field ("none" disables). */
+	groupBy: string;
 }
 
 const STORAGE_KEY = "lovr-views";
@@ -59,6 +63,8 @@ export function sanitizeViews(raw: unknown): View[] {
 			range,
 			cols,
 			columnWidths: widths,
+			sortAsc: v.sortAsc === true,
+			groupBy: typeof v.groupBy === "string" ? v.groupBy : "level",
 		});
 	}
 	return views.sort((a, b) => a.name.localeCompare(b.name));

@@ -85,9 +85,14 @@ export function App() {
 		setQuery(view.q);
 		setColumns(view.cols);
 		setRange(view.range);
+		setSortAsc(view.sortAsc);
+		setGroupBy(view.groupBy);
 		update({ columnWidths: view.columnWidths });
 		setRefresh((r) => r + 1);
-		syncURL({ q: view.q, cols: view.cols, range: view.range, groupBy }, true);
+		syncURL(
+			{ q: view.q, cols: view.cols, range: view.range, groupBy: view.groupBy },
+			true,
+		);
 	};
 
 	const changeGroupBy = (next: string) => {
@@ -171,6 +176,8 @@ export function App() {
 						range,
 						cols: columns,
 						columnWidths: settings.columnWidths,
+						sortAsc,
+						groupBy,
 					})}
 					onApply={applyView}
 				/>

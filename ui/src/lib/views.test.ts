@@ -7,6 +7,8 @@ const view = (name: string, q = ""): View => ({
 	range: null,
 	cols: ["timestamp", "level", "message"],
 	columnWidths: {},
+	sortAsc: false,
+	groupBy: "level",
 });
 
 describe("sanitizeViews", () => {
@@ -36,9 +38,21 @@ describe("sanitizeViews", () => {
 		]);
 		expect(out[0]?.columnWidths).toEqual({ timestamp: 120 });
 		expect(out[0]?.range).toEqual({ preset: "1h" });
+		expect(out[0]?.sortAsc).toBe(false);
+		expect(out[0]?.groupBy).toBe("level");
 	});
 	test("non-array yields empty", () => {
 		expect(sanitizeViews({})).toEqual([]);
+	});
+});
+
+describe("sanitizeViews sort/group", () => {
+	test("keeps sortAsc and groupBy", () => {
+		const out = sanitizeViews([
+			{ ...view("x"), sortAsc: true, groupBy: "service" },
+		]);
+		expect(out[0]?.sortAsc).toBe(true);
+		expect(out[0]?.groupBy).toBe("service");
 	});
 });
 
