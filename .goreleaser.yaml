@@ -1,0 +1,41 @@
+version: 2
+
+project_name: lovr
+
+before:
+  hooks:
+    - go generate ./ui
+
+builds:
+  - main: .
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w
+      - -X github.com/jamillosantos/lovr/cmd.version={{.Version}}
+      - -X github.com/jamillosantos/lovr/cmd.commit={{.Commit}}
+      - -X github.com/jamillosantos/lovr/cmd.date={{.Date}}
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+
+archives:
+  - formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  use: github-native

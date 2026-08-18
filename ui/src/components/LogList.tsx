@@ -139,6 +139,7 @@ export function LogList({
 
 	// Track scrolling away from the top (auto-pause) and snap back to the
 	// newest entries when follow mode is on.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: entries.length>0 intentionally re-attaches the listener once the viewport mounts after the empty state; viewport() only reads a stable ref
 	useEffect(() => {
 		const el = viewport();
 		if (!el) {
@@ -155,6 +156,7 @@ export function LogList({
 	}, [entries.length > 0, sortAsc]);
 
 	const newestID = entries[0]?.$id;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: newestID is an intentional trigger to snap to the live edge on each new entry; viewport() only reads a stable ref
 	useEffect(() => {
 		if (settings.followMode) {
 			const el = viewport();
@@ -162,6 +164,7 @@ export function LogList({
 		}
 	}, [newestID, settings.followMode, sortAsc]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: entries.length>0 and sortAsc intentionally re-run the observer when the sentinel (re)mounts or moves between footer positions
 	useEffect(() => {
 		const sentinel = sentinelRef.current;
 		if (!sentinel) {
@@ -258,13 +261,17 @@ export function LogList({
 						) : (
 							column
 						)}
+						{/* biome-ignore-start lint/a11y/useSemanticElements: an <hr> would break the drag-handle styling and hit area */}
+						{/* biome-ignore lint/a11y/useFocusableInteractive: mouse-only drag affordance; keyboard resize is not implemented, so a tab stop would be inert */}
 						<span
 							className="col-resize"
 							onDoubleClick={() => resetWidth(column)}
 							onMouseDown={(event) => startResize(event, column)}
+							// biome-ignore lint/a11y/useAriaPropsForRole: aria-valuenow applies to focusable separators; this static handle's width is content-driven until dragged
 							role="separator"
 							aria-label={`Resize ${column} column`}
 						/>
+						{/* biome-ignore-end lint/a11y/useSemanticElements: an <hr> would break the drag-handle styling and hit area */}
 					</span>
 				))}
 			</div>

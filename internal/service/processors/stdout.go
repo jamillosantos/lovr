@@ -69,20 +69,12 @@ func toDataFields(m orderedmap.OrderedMap) []domain.LogField {
 	return dataFields
 }
 
-func (s *Stdout) prefix(n int) string {
-	return strings.Repeat("  ", n)
-}
-
-var (
-	labelDecorator   = color.New(color.FgHiWhite, color.Bold).Sprintf
-	timeAgoDecorator = color.New(color.Italic).Sprintf
-)
+var labelDecorator = color.New(color.FgHiWhite, color.Bold).Sprintf
 
 var (
 	labelTimestamp  = "Timestamp"
 	labelLevel      = "Level"
 	labelMessage    = "Message"
-	labelFields     = "Fields"
 	labelCaller     = "Caller"
 	labelStacktrace = "Stacktrace"
 )
@@ -159,10 +151,8 @@ func (s *Stdout) printTable(prefix string, table []domain.LogField, o ...formatO
 		switch vv := f.Value.(type) {
 		case []domain.LogField:
 			dataFields = vv
-			break
 		case orderedmap.OrderedMap:
 			dataFields = toDataFields(vv)
-			break
 		default:
 			fmt.Print(d("%s%s", prefix+p, opts.LabelDecorator("%"+string(opts.labelAlignment)+strconv.Itoa(opts.ColumnWidth)+"s", f.Key)))
 			fmt.Printf(": %v\n", f.Value)
@@ -187,17 +177,6 @@ func (s *Stdout) printString(prefix string, str string) {
 	}
 }
 
-func (s *Stdout) prepareFields(inputFields []domain.LogField) []domain.LogField {
-	fields := make([]domain.LogField, 0)
-	for _, f := range inputFields {
-		k, v := f.Key, f.Value
-		fields = append(fields, domain.LogField{
-			Key:   k,
-			Value: fmt.Sprint(v),
-		})
-	}
-	return fields
-}
 func withTree() formatOption {
 	return func(o *formatOpts) {
 		o.tree = true

@@ -11,6 +11,11 @@ if (existsSync(outdir)) {
 	await rm(outdir, { recursive: true, force: true });
 }
 
+// Recreate dist/.gitkeep right away (not after the build) so a failed build
+// can't leave the tree without a dist/, which would break go:embed and with
+// it every plain `go build` in the module.
+await Bun.write(path.join(outdir, ".gitkeep"), "");
+
 const start = performance.now();
 
 const entrypoints = [...new Bun.Glob("**.html").scanSync("src")]
@@ -23,7 +28,7 @@ const result = await Bun.build({
 	plugins: [plugin],
 	minify: true,
 	target: "browser",
-	sourcemap: "linked",
+	sourcemap: "none",
 	define: {
 		"process.env.NODE_ENV": JSON.stringify("production"),
 		"process.env.BUN_PUBLIC_API_URL": JSON.stringify(

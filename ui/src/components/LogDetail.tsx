@@ -120,10 +120,7 @@ function FieldKey({
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-				<dt
-					className="detail-field-key detail-field-key-clickable"
-					aria-label={`Actions for ${field.key}`}
-				>
+				<dt className="detail-field-key detail-field-key-clickable">
 					{field.key}:
 				</dt>
 			</DropdownMenuTrigger>
@@ -148,6 +145,7 @@ function ArrayFieldRow({
 			<FieldKey field={field} onSearchAction={onSearchAction} />
 			<dd className="detail-field-value detail-field-items">
 				{items.map((item, index) => (
+					// biome-ignore lint/suspicious/noArrayIndexKey: items are raw log values with no identity and the list never reorders; index only disambiguates duplicates
 					<DropdownMenu key={`${fieldValueText(item)}-${index}`}>
 						<DropdownMenuTrigger asChild>
 							<button className="detail-field-item">
@@ -187,10 +185,7 @@ function FieldRow({
 			<FieldKey field={field} onSearchAction={onSearchAction} />
 			<DropdownMenu>
 				<DropdownMenuTrigger asChild>
-					<dd
-						className="detail-field-value detail-field-value-clickable"
-						aria-label={`Actions for the value of ${field.key}`}
-					>
+					<dd className="detail-field-value detail-field-value-clickable">
 						<FieldValue value={field.value} />
 					</dd>
 				</DropdownMenuTrigger>

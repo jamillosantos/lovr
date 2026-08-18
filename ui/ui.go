@@ -1,17 +1,32 @@
 // Package ui holds the web interface. The TypeScript/React sources live in
-// this directory (built with bun into dist/), and the built assets are
-// embedded into the binary when building with the "ui" build tag:
+// this directory and are built with bun into dist/, which is embedded into
+// the binary:
 //
-//	cd ui && bun install && bun run build
-//	go build -tags ui ./lovr
+//	go generate ./ui
+//	go build .
 package ui
 
-import "io/fs"
+import (
+	"embed"
+	"io/fs"
+)
 
-var uiFS fs.FS
+//go:generate bun install
+//go:generate bun run build
 
-// FS returns the built UI assets, or nil when the binary was built without
-// the "ui" build tag.
+//go:embed all:dist
+var dist embed.FS
+
+// FS returns the built UI assets, or nil when dist/ had no built assets at
+// compile time (e.g. a build straight from a fresh checkout without running
+// the bun build first).
 func FS() fs.FS {
-	return uiFS
+	sub, err := fs.Sub(dist, "dist")
+	if err != nil {
+		return nil
+	}
+	if _, err := fs.Stat(sub, "index.html"); err != nil {
+		return nil
+	}
+	return sub
 }

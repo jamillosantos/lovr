@@ -121,6 +121,7 @@ export function Histogram({
 		return () => observer.disconnect();
 	}, []);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: range is depped via its derived rangeKey; refresh is an intentional reload trigger
 	useEffect(() => {
 		if (paused || width === 0) {
 			return;
@@ -148,7 +149,6 @@ export function Histogram({
 			abort.abort();
 			clearInterval(timer);
 		};
-		// biome-ignore lint/correctness/useExhaustiveDependencies: range keyed by value
 	}, [
 		query,
 		rangeKey,
@@ -218,7 +218,6 @@ export function Histogram({
 				{buckets.length === 0 ? (
 					<div className="histogram-empty">No data in range</div>
 				) : (
-					// biome-ignore lint/a11y/noSvgWithoutTitle: decorated by the tooltip layer
 					<svg
 						className="histogram-svg"
 						height={CHART_HEIGHT}

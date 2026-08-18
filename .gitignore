@@ -6,3 +6,6 @@ vendor/
 
 graphify-out/
 test-logs.jsonl
+
+# build output
+/lovr

@@ -1,0 +1,48 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Bump version from conventional commits
+        id: bump
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          fetch_all_tags: true
+
+      # The bump action creates the tag through the GitHub API, so it only
+      # exists on the remote — fetch it for goreleaser.
+      - name: Fetch tags
+        if: steps.bump.outputs.new_tag != ''
+        run: git fetch --tags origin
+
+      - uses: actions/setup-go@v5
+        if: steps.bump.outputs.new_tag != ''
+        with:
+          go-version-file: go.mod
+
+      - uses: oven-sh/setup-bun@v2
+        if: steps.bump.outputs.new_tag != ''
+
+      - uses: goreleaser/goreleaser-action@v6
+        if: steps.bump.outputs.new_tag != ''
+        with:
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
