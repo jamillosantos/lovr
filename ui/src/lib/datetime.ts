@@ -104,7 +104,10 @@ export function formatFullTimestamp(
 		hour12: options.hour12 ?? false,
 		timeZoneName: "shortOffset",
 	});
-	return `${p.year}-${p.month}-${p.day} ${timeOf(p, options)} ${p.timeZoneName}`;
+	// ICU renders a zero offset as "GMT+0" or bare "GMT" depending on its
+	// version — pin it so output doesn't vary across browsers/CI.
+	const tz = p.timeZoneName === "GMT" ? "GMT+0" : p.timeZoneName;
+	return `${p.year}-${p.month}-${p.day} ${timeOf(p, options)} ${tz}`;
 }
 
 // formatShortPoint: MMM d HH:mm (chart axis / range labels)
