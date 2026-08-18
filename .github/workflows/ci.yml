@@ -20,6 +20,12 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          # Distinct cache key from the build job: this job's module cache
+          # also holds the golangci-lint tool deps, and whichever job saves
+          # a shared key first would win with an incomplete cache.
+          cache-dependency-path: |
+            go.sum
+            .golangci.yml
 
       - run: go test ./...
 
