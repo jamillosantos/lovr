@@ -3,7 +3,7 @@
 // the binary:
 //
 //	go generate ./ui
-//	go build ./lovr
+//	go build .
 package ui
 
 import (

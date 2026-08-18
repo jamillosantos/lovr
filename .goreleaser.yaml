@@ -7,7 +7,7 @@ before:
     - go generate ./ui
 
 builds:
-  - main: ./lovr
+  - main: .
     env:
       - CGO_ENABLED=0
     ldflags:

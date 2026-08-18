@@ -6,17 +6,17 @@ ui:
 
 # Build the lovr binary with the web UI embedded
 build: ui
-	go build -o lovr-bin ./lovr
+	go build -o lovr .
 
 # Install lovr (with the web UI embedded) into GOBIN
 install: ui
-	go install ./lovr
+	go install .
 
 test:
 	go test ./...
 
 clean:
-	rm -f lovr-bin
+	rm -f lovr
 	mkdir -p ui/dist
 	find ui/dist -mindepth 1 -not -name .gitkeep -delete
 	touch ui/dist/.gitkeep

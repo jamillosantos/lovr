@@ -49,4 +49,4 @@ jobs:
 
       - run: go generate ./ui
 
-      - run: go build ./lovr
+      - run: go build .

@@ -8,4 +8,4 @@ graphify-out/
 test-logs.jsonl
 
 # build output
-lovr-bin
+/lovr

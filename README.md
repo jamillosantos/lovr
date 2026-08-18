@@ -55,7 +55,7 @@ git clone https://github.com/jamillosantos/lovr
 cd lovr && make install
 ```
 
-> `go install github.com/jamillosantos/lovr/lovr@latest` still works, but the
+> `go install github.com/jamillosantos/lovr@latest` still works, but the
 > resulting binary will not include the web UI (the built assets are not
 > committed to the repository), so `lovr web` will serve the API only.
 
@@ -207,7 +207,7 @@ or manually:
 
 ```
 go generate ./ui
-go build -o lovr-bin ./lovr
+go build -o lovr .
 ```
 
 Binaries built without the UI assets present (e.g. a plain `go build` on a
@@ -216,6 +216,6 @@ page. For UI development, run the backend and the bun dev server side by
 side:
 
 ```
-./yourapp | go run ./lovr web                     # API at 127.0.0.1:8080
+./yourapp | go run . web                          # API at 127.0.0.1:8080
 cd ui && BUN_PUBLIC_API_URL=http://127.0.0.1:8080 bun dev
 ```
