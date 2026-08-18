@@ -37,5 +37,22 @@ archives:
 checksum:
   name_template: checksums.txt
 
+homebrew_casks:
+  - name: lovr
+    repository:
+      owner: jamillosantos
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    homepage: https://github.com/jamillosantos/lovr
+    description: View logs in a human readable way, in the terminal or a built-in web UI
+    # Binaries are not signed/notarized, so strip the quarantine attribute to
+    # keep Gatekeeper from blocking the executable.
+    hooks:
+      post:
+        install: |
+          if system_command("/usr/bin/xattr", args: ["-h"]).exit_status == 0
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/lovr"]
+          end
+
 changelog:
   use: github-native
